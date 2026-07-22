@@ -44,17 +44,33 @@ export default async function DashboardPage() {
     redirect("/login");
   }
 
-  // Fetch summary counts y tasa activa
+  // Fechas para ventas de hoy
+  const hoyInicio = new Date();
+  hoyInicio.setHours(0, 0, 0, 0);
+  const hoyFin = new Date();
+  hoyFin.setHours(23, 59, 59, 999);
+
+  // Fetch summary counts, ventas de hoy, cuentas por cobrar y tasa activa
   const [
     { count: totalProductos },
     { count: totalCategorias },
-    { count: totalProveedores },
+    { data: ventasHoy },
+    { data: clientesDeuda },
     { data: productosStockBajo },
     tasaActivaData,
   ] = await Promise.all([
     supabase.from("productos").select("id", { count: "exact", head: true }).eq("activo", true),
     supabase.from("categorias").select("id", { count: "exact", head: true }),
-    supabase.from("proveedores").select("id", { count: "exact", head: true }),
+    supabase
+      .from("ventas")
+      .select("total_usd, total_bs")
+      .eq("estado", "completada")
+      .gte("fecha", hoyInicio.toISOString())
+      .lte("fecha", hoyFin.toISOString()),
+    supabase
+      .from("clientes")
+      .select("saldo_fiado")
+      .gt("saldo_fiado", 0),
     supabase
       .from("productos")
       .select("id, sku, nombre, stock_actual, stock_minimo, unidad_medida")
@@ -69,42 +85,92 @@ export default async function DashboardPage() {
     productosStockBajo?.filter((p) => p.stock_actual <= p.stock_minimo) ?? [];
   const hayAlertas = stockBajo.length > 0;
 
-  const tasaActiva = tasaActivaData?.tasa ?? null;
+  const tasaActiva = tasaActivaData?.tasa ?? 1;
   const fechaTasa = tasaActivaData?.fecha ?? null;
   const horasTranscurridas = fechaTasa
     ? (new Date().getTime() - new Date(fechaTasa).getTime()) / (1000 * 60 * 60)
     : null;
 
+  // Totales de Hoy
+  const ventasHoyUsd = Number(
+    (ventasHoy ?? []).reduce((acc, v) => acc + (v.total_usd || 0), 0).toFixed(2)
+  );
+  const ventasHoyBs = Number(
+    (ventasHoy ?? []).reduce((acc, v) => acc + (v.total_bs || 0), 0).toFixed(2)
+  );
+
+  // Cuentas por cobrar acumuladas
+  const porCobrarUsd = Number(
+    (clientesDeuda ?? []).reduce((acc, c) => acc + (c.saldo_fiado || 0), 0).toFixed(2)
+  );
+  const porCobrarBs = Number((porCobrarUsd * tasaActiva).toFixed(2));
+
   return (
     <div className="space-y-6">
       {/* Banner de alerta si la tasa tiene >24h sin actualizar */}
       <TasaAlertaBanner
-        tasaActiva={tasaActiva}
+        tasaActiva={tasaActivaData?.tasa ?? null}
         fechaTasa={fechaTasa}
         horasTranscurridas={horasTranscurridas}
         sinTasa={!tasaActivaData}
       />
 
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
+        <h1 className="text-2xl font-bold tracking-tight font-sans">Dashboard General</h1>
         <p className="text-sm text-muted-foreground">
-          Resumen general del inventario
+          Resumen operativo y métricas en tiempo real.
         </p>
       </div>
 
-      {/* Summary cards — Stock bajo es la tarjeta crítica; el resto es informativo */}
+      {/* Summary cards — Doble moneda dual en ventas hoy y por cobrar */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {/* Ventas de Hoy */}
+        <Card className="border-emerald-300 bg-emerald-50/40 dark:border-emerald-800 dark:bg-emerald-950/20">
+          <CardHeader className="pb-2 flex flex-row items-center justify-between">
+            <p className="font-mono text-[11px] font-medium uppercase tracking-widest text-muted-foreground">
+              Ventas de Hoy
+            </p>
+            <DollarSign className="size-4 text-emerald-600 dark:text-emerald-400" />
+          </CardHeader>
+          <CardContent>
+            <p className="font-mono text-2xl font-extrabold text-emerald-700 dark:text-emerald-400">
+              ${ventasHoyUsd.toFixed(2)} <span className="text-xs font-semibold text-muted-foreground">USD</span>
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground font-mono">
+              Bs. {ventasHoyBs.toFixed(2)} ({ventasHoy?.length ?? 0} ventas)
+            </p>
+          </CardContent>
+        </Card>
+
+        {/* Cuentas por cobrar */}
+        <Card className={porCobrarUsd > 0 ? "border-amber-300 bg-amber-50/40 dark:border-amber-800 dark:bg-amber-950/20" : ""}>
+          <CardHeader className="pb-2 flex flex-row items-center justify-between">
+            <p className="font-mono text-[11px] font-medium uppercase tracking-widest text-muted-foreground">
+              Por Cobrar (Crédito)
+            </p>
+            <DollarSign className="size-4 text-amber-600 dark:text-amber-400" />
+          </CardHeader>
+          <CardContent>
+            <p className="font-mono text-2xl font-extrabold text-amber-700 dark:text-amber-400">
+              ${porCobrarUsd.toFixed(2)} <span className="text-xs font-semibold text-muted-foreground">USD</span>
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground font-mono">
+              Bs. {porCobrarBs.toFixed(2)}
+            </p>
+          </CardContent>
+        </Card>
+
         {/* Tasa activa */}
         <Card className={horasTranscurridas && horasTranscurridas >= 24 ? "border-amber-300 dark:border-amber-800" : ""}>
           <CardHeader className="pb-2 flex flex-row items-center justify-between">
             <p className="font-mono text-[11px] font-medium uppercase tracking-widest text-muted-foreground">
               Tasa Activa
             </p>
-            <DollarSign className="size-4 text-emerald-600 dark:text-emerald-400" />
+            <DollarSign className="size-4 text-primary" />
           </CardHeader>
           <CardContent>
-            <p className="font-mono text-2xl font-semibold tabular-nums">
-              {tasaActiva ? `${tasaActiva.toFixed(2)}` : "—"} <span className="text-xs font-normal text-muted-foreground">Bs/USD</span>
+            <p className="font-mono text-2xl font-bold tabular-nums">
+              {tasaActivaData ? `${tasaActivaData.tasa.toFixed(2)}` : "—"} <span className="text-xs font-normal text-muted-foreground">Bs/USD</span>
             </p>
             <p className="mt-1 text-xs text-muted-foreground">
               {tasaActivaData ? `Refrescada ${new Date(tasaActivaData.fecha).toLocaleDateString("es-VE")}` : "Sin tasa registrada"}
@@ -112,6 +178,7 @@ export default async function DashboardPage() {
           </CardContent>
         </Card>
 
+        {/* Stock Bajo */}
         {hayAlertas ? (
           <Card className="bg-primary text-primary-foreground">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -121,7 +188,7 @@ export default async function DashboardPage() {
               <AlertTriangle className="size-4 text-warning-strong" />
             </CardHeader>
             <CardContent>
-              <p className="font-mono text-4xl font-semibold tabular-nums text-warning-strong">
+              <p className="font-mono text-3xl font-semibold tabular-nums text-warning-strong">
                 {stockBajo.length}
               </p>
               <p className="mt-1 text-xs text-primary-foreground/70">
@@ -144,9 +211,6 @@ export default async function DashboardPage() {
             </CardContent>
           </Card>
         )}
-
-        <KpiCard label="Productos activos" value={totalProductos ?? 0} />
-        <KpiCard label="Categorías" value={totalCategorias ?? 0} />
       </div>
 
       {/* Panel de alertas — siempre visible para que el espacio sea intencional */}

@@ -47,6 +47,11 @@ const operacionItems: NavItem[] = [
     icon: <Users className="size-4" />,
   },
   {
+    label: "Reportes",
+    href: "/dashboard/reportes",
+    icon: <BarChart3 className="size-4" />,
+  },
+  {
     label: "Configuración",
     href: "/dashboard/configuracion",
     icon: <Settings className="size-4" />,
@@ -70,13 +75,7 @@ const operacionItems: NavItem[] = [
   },
 ];
 
-const proximosItems: NavItem[] = [
-  {
-    label: "Reportes",
-    href: "/dashboard/reportes",
-    icon: <BarChart3 className="size-4" />,
-  },
-];
+const proximosItems: NavItem[] = [];
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
