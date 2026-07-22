@@ -11,6 +11,7 @@ import {
   Settings,
   Tags,
   Truck,
+  DollarSign,
   ChevronDown,
   X,
 } from "lucide-react";
@@ -31,15 +32,30 @@ const operacionItems: NavItem[] = [
     icon: <LayoutDashboard className="size-4" />,
   },
   {
+    label: "Punto de Venta",
+    href: "/dashboard/pos",
+    icon: <ShoppingCart className="size-4" />,
+  },
+  {
     label: "Inventario",
     href: "/dashboard/inventario",
     icon: <Package className="size-4" />,
+  },
+  {
+    label: "Clientes",
+    href: "/dashboard/clientes",
+    icon: <Users className="size-4" />,
   },
   {
     label: "Configuración",
     href: "/dashboard/configuracion",
     icon: <Settings className="size-4" />,
     children: [
+      {
+        label: "Tasa de cambio",
+        href: "/dashboard/configuracion/tasa-cambio",
+        icon: <DollarSign className="size-4" />,
+      },
       {
         label: "Categorías",
         href: "/dashboard/configuracion/categorias",
@@ -55,16 +71,6 @@ const operacionItems: NavItem[] = [
 ];
 
 const proximosItems: NavItem[] = [
-  {
-    label: "Punto de Venta",
-    href: "/dashboard/pos",
-    icon: <ShoppingCart className="size-4" />,
-  },
-  {
-    label: "Clientes",
-    href: "/dashboard/clientes",
-    icon: <Users className="size-4" />,
-  },
   {
     label: "Reportes",
     href: "/dashboard/reportes",

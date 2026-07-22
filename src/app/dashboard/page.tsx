@@ -10,7 +10,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, DollarSign } from "lucide-react";
+import { obtenerTasaActiva } from "@/app/dashboard/configuracion/tasa-cambio/actions";
+import { TasaAlertaBanner } from "@/components/tasa-alerta-banner";
 
 function KpiCard({ label, value }: { label: string; value: number }) {
   return (
@@ -42,12 +44,13 @@ export default async function DashboardPage() {
     redirect("/login");
   }
 
-  // Fetch summary counts
+  // Fetch summary counts y tasa activa
   const [
     { count: totalProductos },
     { count: totalCategorias },
     { count: totalProveedores },
     { data: productosStockBajo },
+    tasaActivaData,
   ] = await Promise.all([
     supabase.from("productos").select("id", { count: "exact", head: true }).eq("activo", true),
     supabase.from("categorias").select("id", { count: "exact", head: true }),
@@ -58,15 +61,30 @@ export default async function DashboardPage() {
       .eq("activo", true)
       .order("stock_actual", { ascending: true })
       .limit(50),
+    obtenerTasaActiva(),
   ]);
 
-  // Filter stock bajo client-side (Supabase doesn't support cross-column comparison directly)
+  // Filter stock bajo client-side
   const stockBajo =
     productosStockBajo?.filter((p) => p.stock_actual <= p.stock_minimo) ?? [];
   const hayAlertas = stockBajo.length > 0;
 
+  const tasaActiva = tasaActivaData?.tasa ?? null;
+  const fechaTasa = tasaActivaData?.fecha ?? null;
+  const horasTranscurridas = fechaTasa
+    ? (new Date().getTime() - new Date(fechaTasa).getTime()) / (1000 * 60 * 60)
+    : null;
+
   return (
     <div className="space-y-6">
+      {/* Banner de alerta si la tasa tiene >24h sin actualizar */}
+      <TasaAlertaBanner
+        tasaActiva={tasaActiva}
+        fechaTasa={fechaTasa}
+        horasTranscurridas={horasTranscurridas}
+        sinTasa={!tasaActivaData}
+      />
+
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
         <p className="text-sm text-muted-foreground">
@@ -76,6 +94,24 @@ export default async function DashboardPage() {
 
       {/* Summary cards — Stock bajo es la tarjeta crítica; el resto es informativo */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {/* Tasa activa */}
+        <Card className={horasTranscurridas && horasTranscurridas >= 24 ? "border-amber-300 dark:border-amber-800" : ""}>
+          <CardHeader className="pb-2 flex flex-row items-center justify-between">
+            <p className="font-mono text-[11px] font-medium uppercase tracking-widest text-muted-foreground">
+              Tasa Activa
+            </p>
+            <DollarSign className="size-4 text-emerald-600 dark:text-emerald-400" />
+          </CardHeader>
+          <CardContent>
+            <p className="font-mono text-2xl font-semibold tabular-nums">
+              {tasaActiva ? `${tasaActiva.toFixed(2)}` : "—"} <span className="text-xs font-normal text-muted-foreground">Bs/USD</span>
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {tasaActivaData ? `Refrescada ${new Date(tasaActivaData.fecha).toLocaleDateString("es-VE")}` : "Sin tasa registrada"}
+            </p>
+          </CardContent>
+        </Card>
+
         {hayAlertas ? (
           <Card className="bg-primary text-primary-foreground">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -111,7 +147,6 @@ export default async function DashboardPage() {
 
         <KpiCard label="Productos activos" value={totalProductos ?? 0} />
         <KpiCard label="Categorías" value={totalCategorias ?? 0} />
-        <KpiCard label="Proveedores" value={totalProveedores ?? 0} />
       </div>
 
       {/* Panel de alertas — siempre visible para que el espacio sea intencional */}
