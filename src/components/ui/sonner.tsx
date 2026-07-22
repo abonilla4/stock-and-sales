@@ -34,6 +34,19 @@ const Toaster = ({ ...props }: ToasterProps) => {
           "--normal-text": "var(--popover-foreground)",
           "--normal-border": "var(--border)",
           "--border-radius": "var(--radius)",
+          // richColors mapeado a los tokens del sistema (no usar la paleta default de sonner).
+          // OJO: para border se referencia el alias --color-* — var(--success-border) sería
+          // autorreferencia cíclica (mismo nombre que la var de sonner) → invalid at computed-value time.
+          "--success-bg": "var(--success-subtle)",
+          "--success-border": "var(--color-success-border)",
+          "--success-text": "var(--success)",
+          "--warning-bg": "var(--warning-subtle)",
+          "--warning-border": "var(--color-warning-border)",
+          "--warning-text": "var(--warning)",
+          // El sistema no define destructive-subtle: se deriva del token vía color-mix (mismo hue, sin colores nuevos)
+          "--error-bg": "color-mix(in oklch, var(--destructive) 8%, var(--background))",
+          "--error-border": "color-mix(in oklch, var(--destructive) 30%, var(--background))",
+          "--error-text": "var(--destructive)",
         } as React.CSSProperties
       }
       toastOptions={{

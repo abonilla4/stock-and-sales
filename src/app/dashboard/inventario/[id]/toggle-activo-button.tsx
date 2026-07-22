@@ -31,7 +31,11 @@ export function ToggleActivoButton({
       if (result.error) {
         toast.error(result.error);
       } else {
-        toast.success(activo ? "Producto desactivado" : "Producto reactivado");
+        if (activo) {
+          toast.warning("Producto desactivado");
+        } else {
+          toast.success("Producto reactivado");
+        }
         router.refresh();
       }
     } finally {

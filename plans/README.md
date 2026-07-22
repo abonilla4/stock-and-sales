@@ -6,6 +6,7 @@ Generados por `improve-animations` (audit `quick` con foco del usuario). Commit 
 |---|--------|-----------|--------|
 | [001](001-dashboard-loading-skeleton.md) | Skeleton de carga neutro para el Dashboard | HIGH | DONE |
 | [002](002-sidebar-collapsible-motion.md) | Motion del colapsable, chevron y overlay del sidebar | MEDIUM | DONE |
+| [003](003-toast-feedback-sonner.md) | Feedback de acciones con Sonner (tokens del sistema) | MEDIUM | DONE |
 
 ## Orden recomendado de ejecución
 

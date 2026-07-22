@@ -82,7 +82,7 @@ export function ProveedoresClient({
     if (result.error) {
       toast.error(result.error);
     } else {
-      toast.success("Proveedor eliminado");
+      toast.warning("Proveedor eliminado");
       router.refresh();
     }
   }

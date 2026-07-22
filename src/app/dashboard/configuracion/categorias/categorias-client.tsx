@@ -82,7 +82,7 @@ export function CategoriasClient({
     if (result.error) {
       toast.error(result.error);
     } else {
-      toast.success("Categoría eliminada");
+      toast.warning("Categoría eliminada");
       router.refresh();
     }
   }
