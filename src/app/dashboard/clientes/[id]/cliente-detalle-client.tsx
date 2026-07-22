@@ -45,7 +45,7 @@ const METODOS_PAGO_LABELS: Record<MetodoPago, string> = {
   pago_movil: "Pago Móvil",
   transferencia: "Transferencia",
   tarjeta: "Tarjeta",
-  fiado: "Crédito / Fiado",
+  fiado: "Crédito",
 };
 
 export function ClienteDetalleClient({
@@ -124,7 +124,7 @@ export function ClienteDetalleClient({
         <Card className={tieneDeuda ? "border-amber-300 bg-amber-50/40 dark:border-amber-800 dark:bg-amber-950/20" : "border-emerald-300 bg-emerald-50/40 dark:border-emerald-800 dark:bg-emerald-950/20"}>
           <CardHeader className="pb-2">
             <CardTitle className="text-xs font-mono font-medium uppercase tracking-widest text-muted-foreground">
-              Saldo Fiado Pendiente
+              Saldo Pendiente a Crédito
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-1">

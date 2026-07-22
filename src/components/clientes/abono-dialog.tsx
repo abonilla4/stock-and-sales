@@ -122,7 +122,7 @@ export function AbonoDialog({
             <DollarSign className="size-6" />
           </div>
           <DialogTitle className="text-center text-lg font-bold">
-            Registrar Abono / Pago de Fiado
+            Registrar Abono / Pago a Crédito
           </DialogTitle>
           <DialogDescription className="text-center text-xs">
             Cliente: <strong className="text-foreground">{cliente.nombre}</strong>

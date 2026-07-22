@@ -77,7 +77,7 @@ export function ClienteFormDialog({
           <DialogDescription className="text-center text-xs">
             {esEdicion
               ? "Modifica los datos personales o de contacto del cliente."
-              : "Ingresa los datos del nuevo cliente para control de saldo fiado y ventas."}
+              : "Ingresa los datos del nuevo cliente para control de ventas a crédito y cuentas por cobrar."}
           </DialogDescription>
         </DialogHeader>
 

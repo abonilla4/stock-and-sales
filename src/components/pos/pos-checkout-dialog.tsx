@@ -54,7 +54,7 @@ const METODOS_PAGO_OPCIONES: { value: MetodoPago; label: string; icon: React.Rea
   { value: "pago_movil", label: "Pago Móvil", icon: <Smartphone className="size-4 text-purple-500" /> },
   { value: "transferencia", label: "Transferencia Bancaria", icon: <Building2 className="size-4 text-indigo-500" /> },
   { value: "tarjeta", label: "Tarjeta de Débito / Crédito", icon: <CreditCard className="size-4 text-amber-500" /> },
-  { value: "fiado", label: "Crédito / Fiado", icon: <UserCheck className="size-4 text-red-500" /> },
+  { value: "fiado", label: "Crédito", icon: <UserCheck className="size-4 text-red-500" /> },
 ];
 
 export function PosCheckoutDialog({
@@ -157,7 +157,7 @@ export function PosCheckoutDialog({
     e.preventDefault();
 
     if (metodoPago === "fiado" && clienteId === "contado") {
-      toast.error("Para ventas fiadas / a crédito debes seleccionar un cliente registrado.");
+      toast.error("Para ventas a crédito debes seleccionar un cliente registrado.");
       return;
     }
 

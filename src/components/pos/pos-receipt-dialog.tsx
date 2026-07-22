@@ -45,7 +45,7 @@ const METODOS_PAGO_LABELS: Record<MetodoPago, string> = {
   pago_movil: "Pago Móvil",
   transferencia: "Transferencia Bancaria",
   tarjeta: "Tarjeta de Débito / Crédito",
-  fiado: "Crédito / Fiado",
+  fiado: "Crédito",
 };
 
 export function PosReceiptDialog({

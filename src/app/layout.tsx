@@ -18,7 +18,7 @@ const plexMono = IBM_Plex_Mono({
 export const metadata: Metadata = {
   title: "Stock & Sales — Sistema de Inventario y Ventas",
   description:
-    "Sistema de gestión de inventario y control de ventas para ferretería. Moneda dual USD/Bs, punto de venta rápido, control de fiado.",
+    "Sistema de gestión de inventario y control de ventas para ferretería. Moneda dual USD/Bs, punto de venta rápido, control de crédito.",
 };
 
 export default function RootLayout({

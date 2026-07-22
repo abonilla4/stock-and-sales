@@ -63,9 +63,9 @@ export function ClientesClient({
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Clientes y Fiado</h1>
+          <h1 className="text-2xl font-bold tracking-tight">Clientes y Crédito</h1>
           <p className="text-sm text-muted-foreground">
-            Gestión de clientes registrados, historial de créditos y cuentas por cobrar.
+            Gestión de clientes registrados, historial de ventas a crédito y cuentas por cobrar.
           </p>
         </div>
 
@@ -105,7 +105,7 @@ export function ClientesClient({
               ${totalDeudaUsd.toFixed(2)}
             </p>
             <p className="mt-1 text-xs text-muted-foreground">
-              Total fiado acumulado en USD
+              Total acumulado a crédito en USD
             </p>
           </CardContent>
         </Card>
@@ -136,7 +136,7 @@ export function ClientesClient({
             <div>
               <CardTitle className="text-base font-semibold">Directorio de Clientes</CardTitle>
               <CardDescription>
-                Lista completa de clientes con saldo fiado y opciones de cobranza.
+                Lista completa de clientes con saldo a crédito y opciones de cobranza.
               </CardDescription>
             </div>
 
@@ -161,8 +161,8 @@ export function ClientesClient({
                     <TableHead>Cliente</TableHead>
                     <TableHead>Cédula / RIF</TableHead>
                     <TableHead>Teléfono</TableHead>
-                    <TableHead className="text-right">Saldo Fiado (USD)</TableHead>
-                    <TableHead className="text-right">Saldo Fiado (Bs)</TableHead>
+                    <TableHead className="text-right">Saldo a Crédito (USD)</TableHead>
+                    <TableHead className="text-right">Saldo a Crédito (Bs)</TableHead>
                     <TableHead>Estado</TableHead>
                     <TableHead className="text-right">Acciones</TableHead>
                   </TableRow>
