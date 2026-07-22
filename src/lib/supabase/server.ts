@@ -27,3 +27,22 @@ export async function createClient() {
     }
   );
 }
+
+export async function getPerfil() {
+  try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return null;
+
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", user.id)
+      .single();
+
+    return profile;
+  } catch (error) {
+    console.error("Error fetching perfil:", error);
+    return null;
+  }
+}
