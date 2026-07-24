@@ -14,6 +14,8 @@ import {
 } from "@/components/ui/table";
 import { Plus, Search, Package, AlertTriangle } from "lucide-react";
 
+import { formatUSD, formatNumero } from "@/lib/formatters";
+
 export default async function InventarioPage({
   searchParams,
 }: {
@@ -177,7 +179,7 @@ export default async function InventarioPage({
                             : "text-foreground"
                         }
                       >
-                        {p.stock_actual}
+                        {formatNumero(p.stock_actual)}
                       </span>
                       <span className="ml-1 text-xs text-muted-foreground">
                         {p.unidad_medida}
@@ -187,10 +189,10 @@ export default async function InventarioPage({
                       )}
                     </TableCell>
                     <TableCell className="text-right text-muted-foreground">
-                      {p.stock_minimo}
+                      {formatNumero(p.stock_minimo)}
                     </TableCell>
                     <TableCell className="text-right font-medium">
-                      ${Number(p.precio_venta_usd).toFixed(2)}
+                      {formatUSD(p.precio_venta_usd)}
                     </TableCell>
                     <TableCell>
                       {p.activo ? (

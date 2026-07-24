@@ -37,6 +37,8 @@ import { toast } from "sonner";
 import type { Cliente, MetodoPago } from "@/lib/types/database";
 import { registrarAbonoCliente } from "@/app/dashboard/clientes/actions";
 
+import { formatUSD, formatBs, formatNumero } from "@/lib/formatters";
+
 interface AbonoDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -61,9 +63,26 @@ export function AbonoDialog({
   const router = useRouter();
   const [moneda, setMoneda] = useState<"USD" | "BS">("USD");
   const [montoIngresado, setMontoIngresado] = useState("");
-  const [metodoPago, setMetodoPago] = useState<MetodoPago>("pago_movil");
+  const [metodoPago, setMetodoPago] = useState<MetodoPago>("efectivo_usd");
   const [notas, setNotas] = useState("");
   const [loading, setLoading] = useState(false);
+
+  const metodosDisponibles = METODOS_PAGO_OPCIONES.filter((op) => {
+    if (moneda === "BS") {
+      return op.value !== "efectivo_usd";
+    } else {
+      return op.value !== "efectivo_bs" && op.value !== "pago_movil";
+    }
+  });
+
+  const handleCambiarMoneda = (nuevaMoneda: "USD" | "BS") => {
+    setMoneda(nuevaMoneda);
+    if (nuevaMoneda === "BS") {
+      setMetodoPago("pago_movil");
+    } else {
+      setMetodoPago("efectivo_usd");
+    }
+  };
 
   const saldoUsdActual = Number((cliente.saldo_fiado || 0).toFixed(2));
   const saldoBsActual = Number((saldoUsdActual * tasaActiva).toFixed(2));
@@ -104,7 +123,7 @@ export function AbonoDialog({
         return;
       }
 
-      toast.success(`Abono de $${montoUsdFinal.toFixed(2)} USD registrado correctamente.`);
+      toast.success(`Abono de ${formatUSD(montoUsdFinal)} registrado correctamente.`);
       onOpenChange(false);
       router.refresh();
     } catch {
@@ -134,12 +153,12 @@ export function AbonoDialog({
           <div className="flex justify-between text-muted-foreground">
             <span>Saldo pendiente actual:</span>
             <span className="font-semibold text-foreground">
-              ${saldoUsdActual.toFixed(2)} USD (Bs. {saldoBsActual.toFixed(2)})
+              {formatUSD(saldoUsdActual)} ({formatBs(saldoBsActual)})
             </span>
           </div>
           <div className="flex justify-between text-muted-foreground">
             <span>Tasa de cambio del día:</span>
-            <span className="font-mono">Bs. {tasaActiva.toFixed(2)} / USD</span>
+            <span className="font-mono">{formatBs(tasaActiva)} / USD</span>
           </div>
         </div>
 
@@ -152,7 +171,7 @@ export function AbonoDialog({
                 type="button"
                 variant={moneda === "USD" ? "default" : "outline"}
                 size="sm"
-                onClick={() => setMoneda("USD")}
+                onClick={() => handleCambiarMoneda("USD")}
                 className="w-full"
               >
                 💵 Dólares (USD)
@@ -161,7 +180,7 @@ export function AbonoDialog({
                 type="button"
                 variant={moneda === "BS" ? "default" : "outline"}
                 size="sm"
-                onClick={() => setMoneda("BS")}
+                onClick={() => handleCambiarMoneda("BS")}
                 className="w-full"
               >
                 🇻🇪 Bolívares (Bs)
@@ -197,8 +216,8 @@ export function AbonoDialog({
               <p className="text-xs font-medium text-emerald-600 dark:text-emerald-400">
                 Equivalente:{" "}
                 {moneda === "USD"
-                  ? `Bs. ${montoBsFinal.toFixed(2)}`
-                  : `$${montoUsdFinal.toFixed(2)} USD`}
+                  ? formatBs(montoBsFinal)
+                  : `${formatUSD(montoUsdFinal)} USD`}
               </p>
             )}
           </div>
@@ -211,7 +230,7 @@ export function AbonoDialog({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {METODOS_PAGO_OPCIONES.map((opcion) => (
+                {metodosDisponibles.map((opcion) => (
                   <SelectItem key={opcion.value} value={opcion.value}>
                     <div className="flex items-center gap-2">
                       {opcion.icon}

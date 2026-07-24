@@ -229,19 +229,41 @@ const CATEGORIA_PREFIJOS: Record<string, string> = {
   "ferretería general": "FER",
 };
 
-export async function generarSku(categoriaNombre: string) {
+export async function generarSku(
+  categoriaNombre?: string,
+  productoNombreODescripcion?: string
+) {
   const supabase = await createClient();
 
-  const prefijo =
-    CATEGORIA_PREFIJOS[categoriaNombre.toLowerCase()] ||
-    categoriaNombre.substring(0, 3).toUpperCase();
+  const catPrefix = categoriaNombre?.trim()
+    ? CATEGORIA_PREFIJOS[categoriaNombre.toLowerCase()] ||
+      categoriaNombre.trim().substring(0, 3).toUpperCase()
+    : "GEN";
 
-  // Contar productos existentes con ese prefijo
+  let prodPrefix = "";
+  if (productoNombreODescripcion?.trim()) {
+    const palabras = productoNombreODescripcion
+      .trim()
+      .split(/\s+/)
+      .filter((p) => p.length >= 2);
+
+    if (palabras.length >= 2) {
+      prodPrefix = (palabras[0].substring(0, 2) + palabras[1].substring(0, 2)).toUpperCase();
+    } else if (palabras.length === 1) {
+      prodPrefix = palabras[0].substring(0, 3).toUpperCase();
+    }
+  }
+
+  // Eliminar caracteres especiales no alfanuméricos en el prefijo
+  const cleanProdPrefix = prodPrefix.replace(/[^A-Z0-9]/gi, "");
+  const skuPrefix = cleanProdPrefix ? `${catPrefix}-${cleanProdPrefix}` : catPrefix;
+
+  // Contar productos existentes con ese prefijo para obtener el siguiente número secuencial
   const { count } = await supabase
     .from("productos")
     .select("id", { count: "exact", head: true })
-    .like("sku", `${prefijo}-%`);
+    .like("sku", `${skuPrefix}-%`);
 
   const secuencial = ((count ?? 0) + 1).toString().padStart(4, "0");
-  return `${prefijo}-${secuencial}`;
+  return `${skuPrefix}-${secuencial}`;
 }

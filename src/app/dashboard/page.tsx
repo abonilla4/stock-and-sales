@@ -14,6 +14,8 @@ import { AlertTriangle, DollarSign } from "lucide-react";
 import { obtenerTasaActiva } from "@/app/dashboard/configuracion/tasa-cambio/actions";
 import { TasaAlertaBanner } from "@/components/tasa-alerta-banner";
 
+import { formatUSD, formatBs, formatNumero } from "@/lib/formatters";
+
 function KpiCard({ label, value }: { label: string; value: number }) {
   return (
     <Card>
@@ -134,10 +136,10 @@ export default async function DashboardPage() {
           </CardHeader>
           <CardContent>
             <p className="font-mono text-2xl font-extrabold text-emerald-700 dark:text-emerald-400">
-              ${ventasHoyUsd.toFixed(2)} <span className="text-xs font-semibold text-muted-foreground">USD</span>
+              {formatUSD(ventasHoyUsd)} <span className="text-xs font-semibold text-muted-foreground">USD</span>
             </p>
             <p className="mt-1 text-xs text-muted-foreground font-mono">
-              Bs. {ventasHoyBs.toFixed(2)} ({ventasHoy?.length ?? 0} ventas)
+              {formatBs(ventasHoyBs)} ({ventasHoy?.length ?? 0} ventas)
             </p>
           </CardContent>
         </Card>
@@ -152,10 +154,10 @@ export default async function DashboardPage() {
           </CardHeader>
           <CardContent>
             <p className="font-mono text-2xl font-extrabold text-amber-700 dark:text-amber-400">
-              ${porCobrarUsd.toFixed(2)} <span className="text-xs font-semibold text-muted-foreground">USD</span>
+              {formatUSD(porCobrarUsd)} <span className="text-xs font-semibold text-muted-foreground">USD</span>
             </p>
             <p className="mt-1 text-xs text-muted-foreground font-mono">
-              Bs. {porCobrarBs.toFixed(2)}
+              {formatBs(porCobrarBs)}
             </p>
           </CardContent>
         </Card>
@@ -170,7 +172,7 @@ export default async function DashboardPage() {
           </CardHeader>
           <CardContent>
             <p className="font-mono text-2xl font-bold tabular-nums">
-              {tasaActivaData ? `${tasaActivaData.tasa.toFixed(2)}` : "—"} <span className="text-xs font-normal text-muted-foreground">Bs/USD</span>
+              {tasaActivaData ? formatBs(tasaActivaData.tasa) : "—"} <span className="text-xs font-normal text-muted-foreground">/USD</span>
             </p>
             <p className="mt-1 text-xs text-muted-foreground">
               {tasaActivaData ? `Refrescada ${new Date(tasaActivaData.fecha).toLocaleDateString("es-VE")}` : "Sin tasa registrada"}
@@ -248,14 +250,14 @@ export default async function DashboardPage() {
                     </TableCell>
                     <TableCell className="text-right">
                       <span className="font-mono font-semibold tabular-nums text-warning">
-                        {p.stock_actual}
+                        {formatNumero(p.stock_actual)}
                       </span>
                       <span className="ml-1 text-xs text-muted-foreground">
                         {p.unidad_medida}
                       </span>
                     </TableCell>
                     <TableCell className="text-right font-mono tabular-nums text-muted-foreground">
-                      {p.stock_minimo}
+                      {formatNumero(p.stock_minimo)}
                     </TableCell>
                   </TableRow>
                 ))}

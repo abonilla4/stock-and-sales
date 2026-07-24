@@ -23,7 +23,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Plus, Pencil, Trash2, Loader2, Truck } from "lucide-react";
+import { Plus, Pencil, Trash2, Loader2, Truck, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import type { Proveedor } from "@/lib/types/database";
 import {
@@ -44,11 +44,18 @@ export function ProveedoresClient({
   const router = useRouter();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingProv, setEditingProv] = useState<Proveedor | null>(null);
+  const [codigoInput, setCodigoInput] = useState("");
   const [loading, setLoading] = useState(false);
+
+  function handleGenerateCodigo() {
+    const randomCode = `PRV-${Math.floor(1000 + Math.random() * 9000)}`;
+    setCodigoInput(randomCode);
+  }
 
   async function handleSubmit(formData: FormData) {
     setLoading(true);
     try {
+      formData.set("codigo", codigoInput);
       let result;
       if (editingProv) {
         result = await actualizarProveedor(editingProv.id, formData);
@@ -66,6 +73,7 @@ export function ProveedoresClient({
       );
       setDialogOpen(false);
       setEditingProv(null);
+      setCodigoInput("");
       router.refresh();
     } finally {
       setLoading(false);
@@ -89,11 +97,13 @@ export function ProveedoresClient({
 
   function openCreate() {
     setEditingProv(null);
+    setCodigoInput(`PRV-${Math.floor(1000 + Math.random() * 9000)}`);
     setDialogOpen(true);
   }
 
   function openEdit(prov: Proveedor) {
     setEditingProv(prov);
+    setCodigoInput(prov.codigo ?? "");
     setDialogOpen(true);
   }
 
@@ -111,7 +121,10 @@ export function ProveedoresClient({
           open={dialogOpen}
           onOpenChange={(v) => {
             setDialogOpen(v);
-            if (!v) setEditingProv(null);
+            if (!v) {
+              setEditingProv(null);
+              setCodigoInput("");
+            }
           }}
         >
           <DialogTrigger
@@ -127,6 +140,27 @@ export function ProveedoresClient({
               </DialogTitle>
             </DialogHeader>
             <form action={handleSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="prov-codigo">Código / RIF</Label>
+                <div className="flex gap-2">
+                  <Input
+                    id="prov-codigo"
+                    name="codigo"
+                    placeholder="Ej: J-12345678-9 o PRV-1024"
+                    value={codigoInput}
+                    onChange={(e) => setCodigoInput(e.target.value)}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    onClick={handleGenerateCodigo}
+                    title="Generar código aleatorio"
+                  >
+                    <Sparkles className="size-4" />
+                  </Button>
+                </div>
+              </div>
               <div className="space-y-2">
                 <Label htmlFor="prov-nombre">Nombre *</Label>
                 <Input
@@ -191,6 +225,7 @@ export function ProveedoresClient({
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead>Código / RIF</TableHead>
                 <TableHead>Nombre</TableHead>
                 <TableHead>Teléfono</TableHead>
                 <TableHead>Contacto</TableHead>
@@ -203,6 +238,9 @@ export function ProveedoresClient({
                 const count = productCountMap[prov.id] ?? 0;
                 return (
                   <TableRow key={prov.id}>
+                    <TableCell className="font-mono text-xs font-semibold text-muted-foreground">
+                      {prov.codigo ?? "—"}
+                    </TableCell>
                     <TableCell className="font-medium">{prov.nombre}</TableCell>
                     <TableCell className="text-muted-foreground">
                       {prov.telefono ?? "—"}

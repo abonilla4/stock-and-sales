@@ -7,6 +7,7 @@ export async function crearProveedor(formData: FormData) {
   const supabase = await createClient();
 
   const nombre = (formData.get("nombre") as string)?.trim();
+  let codigo = (formData.get("codigo") as string)?.trim() || null;
   const telefono = (formData.get("telefono") as string)?.trim() || null;
   const contacto = (formData.get("contacto") as string)?.trim() || null;
   const notas = (formData.get("notas") as string)?.trim() || null;
@@ -15,13 +16,57 @@ export async function crearProveedor(formData: FormData) {
     return { error: "El nombre del proveedor es obligatorio." };
   }
 
+  // Verificar que no exista otro proveedor con el mismo nombre (case-insensitive)
+  const { data: existente } = await supabase
+    .from("proveedores")
+    .select("id")
+    .ilike("nombre", nombre)
+    .limit(1);
+
+  if (existente && existente.length > 0) {
+    return { error: `Ya existe un proveedor registrado con el nombre "${nombre}".` };
+  }
+
+  // Si no ingresó código, autogenerar uno aleatorio tipo PRV-XXXX
+  if (!codigo) {
+    codigo = `PRV-${Math.floor(1000 + Math.random() * 9000)}`;
+  }
+
   const { error } = await supabase
     .from("proveedores")
-    .insert({ nombre, telefono, contacto, notas });
+    .insert({ codigo, nombre, telefono, contacto, notas });
 
   if (error) {
     console.error("Error creando proveedor:", error);
-    return { error: `Error al crear el proveedor: ${error.message}` };
+    // Capturar violación de unicidad en BD (índice único o carrera concurrente)
+    if (
+      error.code === "23505" ||
+      error.message.includes("proveedores_nombre_unique_ci") ||
+      error.message.includes("unique constraint") ||
+      error.message.includes("duplicate key")
+    ) {
+      return { error: `Ya existe un proveedor registrado con el nombre "${nombre}".` };
+    }
+
+    // Si la columna codigo no existe en la tabla postgres aún, reintentar sin código
+    if (error.message.includes("codigo") || error.code === "PGRST204") {
+      const { error: retryError } = await supabase
+        .from("proveedores")
+        .insert({ nombre, telefono, contacto, notas });
+      if (retryError) {
+        if (
+          retryError.code === "23505" ||
+          retryError.message.includes("proveedores_nombre_unique_ci") ||
+          retryError.message.includes("unique constraint") ||
+          retryError.message.includes("duplicate key")
+        ) {
+          return { error: `Ya existe un proveedor registrado con el nombre "${nombre}".` };
+        }
+        return { error: `Error al crear el proveedor: ${retryError.message}` };
+      }
+    } else {
+      return { error: `Error al crear el proveedor: ${error.message}` };
+    }
   }
 
   revalidatePath("/dashboard/configuracion/proveedores");
@@ -33,6 +78,7 @@ export async function actualizarProveedor(id: string, formData: FormData) {
   const supabase = await createClient();
 
   const nombre = (formData.get("nombre") as string)?.trim();
+  const codigo = (formData.get("codigo") as string)?.trim() || null;
   const telefono = (formData.get("telefono") as string)?.trim() || null;
   const contacto = (formData.get("contacto") as string)?.trim() || null;
   const notas = (formData.get("notas") as string)?.trim() || null;
@@ -41,13 +87,54 @@ export async function actualizarProveedor(id: string, formData: FormData) {
     return { error: "El nombre es obligatorio." };
   }
 
+  // Verificar que no exista otro proveedor con el mismo nombre (case-insensitive)
+  const { data: existente } = await supabase
+    .from("proveedores")
+    .select("id")
+    .ilike("nombre", nombre)
+    .neq("id", id)
+    .limit(1);
+
+  if (existente && existente.length > 0) {
+    return { error: `Ya existe otro proveedor registrado con el nombre "${nombre}".` };
+  }
+
   const { error } = await supabase
     .from("proveedores")
-    .update({ nombre, telefono, contacto, notas })
+    .update({ codigo, nombre, telefono, contacto, notas })
     .eq("id", id);
 
   if (error) {
-    return { error: `Error al actualizar: ${error.message}` };
+    console.error("Error actualizando proveedor:", error);
+    // Capturar violación de unicidad en BD (índice único o carrera concurrente)
+    if (
+      error.code === "23505" ||
+      error.message.includes("proveedores_nombre_unique_ci") ||
+      error.message.includes("unique constraint") ||
+      error.message.includes("duplicate key")
+    ) {
+      return { error: `Ya existe otro proveedor registrado con el nombre "${nombre}".` };
+    }
+
+    if (error.message.includes("codigo") || error.code === "PGRST204") {
+      const { error: retryError } = await supabase
+        .from("proveedores")
+        .update({ nombre, telefono, contacto, notas })
+        .eq("id", id);
+      if (retryError) {
+        if (
+          retryError.code === "23505" ||
+          retryError.message.includes("proveedores_nombre_unique_ci") ||
+          retryError.message.includes("unique constraint") ||
+          retryError.message.includes("duplicate key")
+        ) {
+          return { error: `Ya existe otro proveedor registrado con el nombre "${nombre}".` };
+        }
+        return { error: `Error al actualizar: ${retryError.message}` };
+      }
+    } else {
+      return { error: `Error al actualizar: ${error.message}` };
+    }
   }
 
   revalidatePath("/dashboard/configuracion/proveedores");

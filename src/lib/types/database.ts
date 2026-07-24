@@ -41,6 +41,7 @@ export interface Categoria {
 
 export interface Proveedor {
   id: string;
+  codigo?: string | null;
   nombre: string;
   telefono: string | null;
   contacto: string | null;

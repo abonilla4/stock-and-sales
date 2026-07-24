@@ -23,6 +23,8 @@ import type {
 } from "@/lib/types/database";
 import { crearProducto, actualizarProducto, generarSku } from "@/app/dashboard/inventario/actions";
 
+import { formatUSD, formatNumero } from "@/lib/formatters";
+
 const UNIDADES_MEDIDA: { value: UnidadMedida; label: string }[] = [
   { value: "unidad", label: "Unidad" },
   { value: "caja", label: "Caja" },
@@ -48,8 +50,20 @@ export function ProductoForm({
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [sku, setSku] = useState(producto?.sku ?? "");
+  const [nombre, setNombre] = useState(producto?.nombre ?? "");
+  const [descripcion, setDescripcion] = useState(producto?.descripcion ?? "");
   const [selectedCategoria, setSelectedCategoria] = useState(
     producto?.categoria_id ?? ""
+  );
+  const [selectedProveedor, setSelectedProveedor] = useState(
+    producto?.proveedor_id ?? ""
+  );
+
+  const [precioCosto, setPrecioCosto] = useState<string>(
+    producto?.precio_costo_usd !== undefined ? String(producto.precio_costo_usd) : ""
+  );
+  const [precioVenta, setPrecioVenta] = useState<string>(
+    producto?.precio_venta_usd !== undefined ? String(producto.precio_venta_usd) : ""
   );
 
   // Auto-generate SKU when category changes (only in create mode)
@@ -62,10 +76,28 @@ export function ProductoForm({
 
   async function handleGenerateSku() {
     const cat = categorias.find((c) => c.id === selectedCategoria);
-    if (!cat) return;
-    const newSku = await generarSku(cat.nombre);
+    const catPrefix = cat ? cat.nombre : "";
+    const prodText = nombre || descripcion;
+    const newSku = await generarSku(catPrefix, prodText);
     setSku(newSku);
   }
+
+  // Cálculos dinámicos de margen de ganancia
+  const costoNum = parseFloat(precioCosto) || 0;
+  const ventaNum = parseFloat(precioVenta) || 0;
+
+  // Precio sugerido con el 30% de margen sobre el costo
+  const precioSugerido30 = costoNum > 0 ? Number((costoNum * 1.30).toFixed(2)) : 0;
+
+  // % de ganancia real actual
+  const gananciaUsd = ventaNum - costoNum;
+  const porcentajeGanancia = costoNum > 0 ? Number(((gananciaUsd / costoNum) * 100).toFixed(1)) : 0;
+
+  const aplicarPrecioSugerido = () => {
+    if (precioSugerido30 > 0) {
+      setPrecioVenta(precioSugerido30.toFixed(2));
+    }
+  };
 
   async function handleSubmit(formData: FormData) {
     setLoading(true);
@@ -73,6 +105,9 @@ export function ProductoForm({
       // Ensure the SKU from state is used (it may have been auto-generated)
       formData.set("sku", sku);
       formData.set("categoria_id", selectedCategoria);
+      formData.set("proveedor_id", selectedProveedor);
+      formData.set("precio_costo_usd", precioCosto);
+      formData.set("precio_venta_usd", precioVenta);
 
       let result;
       if (mode === "crear") {
@@ -120,7 +155,8 @@ export function ProductoForm({
               id="nombre"
               name="nombre"
               placeholder="Ej: Tubo PVC 1/2 pulgada"
-              defaultValue={producto?.nombre}
+              value={nombre}
+              onChange={(e) => setNombre(e.target.value)}
               required
             />
           </div>
@@ -138,17 +174,15 @@ export function ProductoForm({
                 onChange={(e) => setSku(e.target.value)}
                 required
               />
-              {mode === "crear" && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="icon"
-                  onClick={handleGenerateSku}
-                  title="Generar SKU automáticamente"
-                >
-                  <Sparkles className="size-4" />
-                </Button>
-              )}
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                onClick={handleGenerateSku}
+                title="Generar SKU automáticamente (Categoría + Nombre)"
+              >
+                <Sparkles className="size-4 text-amber-500" />
+              </Button>
             </div>
           </div>
 
@@ -168,7 +202,8 @@ export function ProductoForm({
               id="descripcion"
               name="descripcion"
               placeholder="Descripción opcional del producto"
-              defaultValue={producto?.descripcion ?? ""}
+              value={descripcion}
+              onChange={(e) => setDescripcion(e.target.value)}
               rows={2}
             />
           </div>
@@ -191,10 +226,12 @@ export function ProductoForm({
               onValueChange={(val) => setSelectedCategoria(val ?? "")}
               required
             >
-              <SelectTrigger>
-                <SelectValue placeholder="Seleccionar categoría" />
+              <SelectTrigger className="w-full h-10 text-sm">
+                <SelectValue placeholder="Seleccionar categoría">
+                  {categorias.find((c) => c.id === selectedCategoria)?.nombre ?? "Seleccionar categoría"}
+                </SelectValue>
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="w-full">
                 {categorias.map((cat) => (
                   <SelectItem key={cat.id} value={cat.id}>
                     {cat.nombre}
@@ -208,12 +245,18 @@ export function ProductoForm({
             <Label>Proveedor</Label>
             <Select
               name="proveedor_id"
-              defaultValue={producto?.proveedor_id ?? undefined}
+              value={selectedProveedor}
+              onValueChange={(val) => setSelectedProveedor(val ?? "")}
             >
-              <SelectTrigger>
-                <SelectValue placeholder="Sin proveedor" />
+              <SelectTrigger className="w-full h-10 text-sm">
+                <SelectValue placeholder="Sin proveedor">
+                  {selectedProveedor
+                    ? proveedores.find((p) => p.id === selectedProveedor)?.nombre ?? "Sin proveedor"
+                    : "Sin proveedor"}
+                </SelectValue>
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="w-full">
+                <SelectItem value="none">Sin proveedor</SelectItem>
                 {proveedores.map((prov) => (
                   <SelectItem key={prov.id} value={prov.id}>
                     {prov.nombre}
@@ -268,11 +311,26 @@ export function ProductoForm({
                 step="0.01"
                 min="0"
                 placeholder="0.00"
-                defaultValue={producto?.precio_costo_usd}
-                className="pl-7"
+                value={precioCosto}
+                onChange={(e) => setPrecioCosto(e.target.value)}
+                className="pl-7 font-medium"
                 required
               />
             </div>
+            {costoNum > 0 && (
+              <div className="flex items-center justify-between text-xs text-muted-foreground pt-1">
+                <span>Sugerido (30% ganancia): <strong>{formatUSD(precioSugerido30)}</strong></span>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="xs"
+                  onClick={aplicarPrecioSugerido}
+                  className="h-5 px-1.5 text-xs text-primary hover:underline"
+                >
+                  Usar sugerido
+                </Button>
+              </div>
+            )}
           </div>
 
           <div className="space-y-2">
@@ -290,11 +348,19 @@ export function ProductoForm({
                 step="0.01"
                 min="0"
                 placeholder="0.00"
-                defaultValue={producto?.precio_venta_usd}
-                className="pl-7"
+                value={precioVenta}
+                onChange={(e) => setPrecioVenta(e.target.value)}
+                className="pl-7 font-medium"
                 required
               />
             </div>
+            {costoNum > 0 && ventaNum > 0 && (
+              <div className="text-xs pt-1">
+                <span className={gananciaUsd >= 0 ? "text-emerald-600 dark:text-emerald-400 font-semibold" : "text-destructive font-semibold"}>
+                  Ganancia: {formatUSD(gananciaUsd)} ({porcentajeGanancia >= 0 ? `+${porcentajeGanancia}%` : `${porcentajeGanancia}%`})
+                </span>
+              </div>
+            )}
           </div>
         </div>
       </div>

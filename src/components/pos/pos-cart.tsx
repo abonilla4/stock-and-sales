@@ -12,12 +12,16 @@ import { PosCheckoutDialog } from "./pos-checkout-dialog";
 import { PosReceiptDialog, type ReciboVentaData } from "./pos-receipt-dialog";
 import type { Cliente } from "@/lib/types/database";
 
+import { useRouter } from "next/navigation";
+import { formatUSD, formatBs, formatNumero } from "@/lib/formatters";
+
 interface PosCartProps {
   clientes: Cliente[];
   isAdmin: boolean;
 }
 
 export function PosCart({ clientes, isAdmin }: PosCartProps) {
+  const router = useRouter();
   const {
     items,
     descuentoUsd,
@@ -41,6 +45,17 @@ export function PosCart({ clientes, isAdmin }: PosCartProps) {
     (item) => item.cantidad > item.producto.stock_actual
   );
   const tieneStockInsuficiente = itemsConStockInsuficiente.length > 0;
+
+  const handleVentaExitosa = (recibo: ReciboVentaData) => {
+    setReciboData(recibo);
+    setReceiptOpen(true);
+    router.refresh();
+  };
+
+  const handleNuevaVenta = () => {
+    limpiarCarrito();
+    router.refresh();
+  };
 
   return (
     <div className="flex flex-col h-full rounded-xl border border-border bg-card shadow-sm">
@@ -151,10 +166,10 @@ export function PosCart({ clientes, isAdmin }: PosCartProps) {
 
                   <div className="text-right">
                     <span className="text-xs text-muted-foreground block">
-                      ${item.precio_unitario_usd.toFixed(2)} c/u
+                      {formatUSD(item.precio_unitario_usd)} c/u
                     </span>
                     <span className="text-sm font-bold text-foreground">
-                      ${item.subtotal_usd.toFixed(2)}
+                      {formatUSD(item.subtotal_usd)}
                     </span>
                   </div>
                 </div>
@@ -164,7 +179,7 @@ export function PosCart({ clientes, isAdmin }: PosCartProps) {
                   <div className="mt-2 flex items-center gap-1.5 text-xs text-amber-700 dark:text-amber-400">
                     <AlertTriangle className="size-3.5 shrink-0" />
                     <span>
-                      Stock disponible: {item.producto.stock_actual} (Requiere autorización)
+                      Stock disponible: {formatNumero(item.producto.stock_actual)} (Requiere autorización)
                     </span>
                   </div>
                 )}
@@ -213,13 +228,13 @@ export function PosCart({ clientes, isAdmin }: PosCartProps) {
         <div className="space-y-1.5 text-sm">
           <div className="flex justify-between text-muted-foreground text-xs">
             <span>Subtotal</span>
-            <span>${subtotalUsd.toFixed(2)} USD</span>
+            <span>{formatUSD(subtotalUsd)} USD</span>
           </div>
 
           {descuentoUsd > 0 && (
             <div className="flex justify-between text-emerald-600 text-xs">
               <span>Descuento</span>
-              <span>-${descuentoUsd.toFixed(2)} USD</span>
+              <span>-{formatUSD(descuentoUsd)} USD</span>
             </div>
           )}
 
@@ -227,10 +242,10 @@ export function PosCart({ clientes, isAdmin }: PosCartProps) {
             <span className="font-bold text-base">TOTAL A PAGAR</span>
             <div className="text-right">
               <span className="text-xl font-extrabold text-primary block leading-none">
-                ${totalUsd.toFixed(2)} <span className="text-xs font-normal">USD</span>
+                {formatUSD(totalUsd)} <span className="text-xs font-normal">USD</span>
               </span>
               <span className="text-xs font-semibold text-muted-foreground block mt-0.5">
-                Bs. {totalBs.toFixed(2)} <span className="text-[10px] font-normal">({tasaActiva.toFixed(2)} Bs/$)</span>
+                {formatBs(totalBs)} <span className="text-[10px] font-normal">({formatBs(tasaActiva)}/$)</span>
               </span>
             </div>
           </div>
@@ -253,7 +268,7 @@ export function PosCart({ clientes, isAdmin }: PosCartProps) {
           disabled={items.length === 0 || totalUsd <= 0}
           onClick={() => setCheckoutOpen(true)}
         >
-          <CreditCard className="mr-2 size-5" /> Cobrar (${totalUsd.toFixed(2)})
+          <CreditCard className="mr-2 size-5" /> Cobrar ({formatUSD(totalUsd)})
         </Button>
       </div>
 
@@ -265,10 +280,7 @@ export function PosCart({ clientes, isAdmin }: PosCartProps) {
           clientes={clientes}
           isAdmin={isAdmin}
           tieneStockInsuficiente={tieneStockInsuficiente}
-          onVentaExitosa={(recibo) => {
-            setReciboData(recibo);
-            setReceiptOpen(true);
-          }}
+          onVentaExitosa={handleVentaExitosa}
         />
       )}
 
@@ -278,7 +290,7 @@ export function PosCart({ clientes, isAdmin }: PosCartProps) {
           open={receiptOpen}
           onOpenChange={setReceiptOpen}
           recibo={reciboData}
-          onNuevaVenta={limpiarCarrito}
+          onNuevaVenta={handleNuevaVenta}
         />
       )}
     </div>

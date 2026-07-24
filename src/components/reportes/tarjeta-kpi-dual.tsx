@@ -11,6 +11,8 @@ interface TarjetaKpiDualProps {
   className?: string;
 }
 
+import { formatUSD, formatBs } from "@/lib/formatters";
+
 export function TarjetaKpiDual({
   label,
   montoUsd,
@@ -47,13 +49,13 @@ export function TarjetaKpiDual({
       <CardContent className="space-y-1">
         <div className="flex items-baseline gap-1.5">
           <span className={cn("font-mono text-2xl font-extrabold tracking-tight", textStyles[variant])}>
-            ${montoUsd.toFixed(2)}
+            {formatUSD(montoUsd)}
           </span>
           <span className="text-xs font-semibold text-muted-foreground">USD</span>
         </div>
 
         <p className="text-xs font-medium text-muted-foreground">
-          Equivalente: <strong className="text-foreground font-mono">Bs. {montoBs.toFixed(2)}</strong>
+          Equivalente: <strong className="text-foreground font-mono">{formatBs(montoBs)}</strong>
         </p>
 
         {subtext && (

@@ -40,6 +40,8 @@ import { useOfflineNetwork } from "@/components/offline-network-context";
 import { AdminAuthDialog } from "./admin-auth-dialog";
 import { PosReceiptDialog, type ReciboVentaData } from "./pos-receipt-dialog";
 
+import { formatUSD, formatBs } from "@/lib/formatters";
+
 interface PosCheckoutDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -172,13 +174,13 @@ export function PosCheckoutDialog({
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent className="sm:max-w-xl">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <CreditCard className="size-5 text-primary" /> Confirmar y Cobrar Venta
             </DialogTitle>
             <DialogDescription>
-              Selecciona el cliente y método de pago. La tasa aplicada quedará registrada como snapshot congelado.
+              Selecciona el cliente y método de pago. La tasa aplicada quedará registrada en la transacción.
             </DialogDescription>
           </DialogHeader>
 
@@ -187,10 +189,16 @@ export function PosCheckoutDialog({
             <div className="space-y-2">
               <Label>Cliente</Label>
               <Select value={clienteId} onValueChange={(v) => setClienteId(v ?? "contado")}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Seleccionar cliente" />
+                <SelectTrigger className="w-full h-10 text-sm">
+                  <SelectValue placeholder="Seleccionar cliente">
+                    {clienteId === "contado"
+                      ? "🛒 Venta de contado (Sin cliente registrado)"
+                      : clienteSeleccionado
+                      ? `👤 ${clienteSeleccionado.nombre}${clienteSeleccionado.identificacion ? ` (${clienteSeleccionado.identificacion})` : ""}`
+                      : "Seleccionar cliente"}
+                  </SelectValue>
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="w-full min-w-[320px]">
                   <SelectItem value="contado">🛒 Venta de contado (Sin cliente registrado)</SelectItem>
                   {clientes.map((c) => (
                     <SelectItem key={c.id} value={c.id}>
@@ -205,10 +213,10 @@ export function PosCheckoutDialog({
             <div className="space-y-2">
               <Label>Método de Pago</Label>
               <Select value={metodoPago} onValueChange={(v) => setMetodoPago((v ?? "efectivo_usd") as MetodoPago)}>
-                <SelectTrigger>
+                <SelectTrigger className="w-full h-10 text-sm">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="w-full">
                   {METODOS_PAGO_OPCIONES.map((opcion) => (
                     <SelectItem key={opcion.value} value={opcion.value}>
                       <div className="flex items-center gap-2">
@@ -241,7 +249,7 @@ export function PosCheckoutDialog({
                 {montoRecibidoNum > 0 && (
                   <div className="flex justify-between text-xs font-semibold text-blue-900 dark:text-blue-300 pt-1">
                     <span>Vuelto a entregar:</span>
-                    <span className="font-mono font-bold">Bs. {vueltoBs.toFixed(2)}</span>
+                    <span className="font-mono font-bold">{formatBs(vueltoBs)}</span>
                   </div>
                 )}
               </div>
@@ -250,19 +258,19 @@ export function PosCheckoutDialog({
             {/* Resumen de totales y tasa aplicada */}
             <div className="rounded-lg border bg-muted/40 p-4 space-y-2 text-xs">
               <div className="flex justify-between text-muted-foreground">
-                <span>Tasa aplicada (Snapshot):</span>
+                <span>Tasa aplicada:</span>
                 <span className="font-mono font-semibold text-foreground">
-                  Bs. {tasaActiva.toFixed(2)} / USD
+                  {formatBs(tasaActiva)} / USD
                 </span>
               </div>
               <Separator />
               <div className="flex justify-between text-base font-bold pt-1">
                 <span>Total USD:</span>
-                <span className="text-emerald-600 dark:text-emerald-400">${totalUsd.toFixed(2)}</span>
+                <span className="text-emerald-600 dark:text-emerald-400">{formatUSD(totalUsd)}</span>
               </div>
               <div className="flex justify-between text-sm font-semibold">
                 <span>Total Bolívares (Bs):</span>
-                <span>Bs. {totalBs.toFixed(2)}</span>
+                <span>{formatBs(totalBs)}</span>
               </div>
             </div>
 

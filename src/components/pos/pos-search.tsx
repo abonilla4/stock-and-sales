@@ -9,6 +9,8 @@ import { usePosCart } from "./pos-cart-context";
 import { buscarProductosPOS } from "@/app/dashboard/pos/actions";
 import { buscarProductosOffline } from "@/lib/offline/sync-cache";
 
+import { formatUSD, formatNumero } from "@/lib/formatters";
+
 interface PosSearchProps {
   productosIniciales: Producto[];
 }
@@ -105,24 +107,19 @@ export function PosSearch({ productosIniciales }: PosSearchProps) {
 
   return (
     <div className="flex flex-col h-full space-y-4">
-      {/* Buscador con indicador F2 */}
+      {/* Buscador */}
       <div className="relative">
         <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
         <Input
           ref={inputRef}
           type="text"
-          placeholder="Buscar por Nombre, SKU o Código de Barras... (Presiona F2 o /)"
+          placeholder="Buscar por Nombre, SKU o Código de Barras..."
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onKeyDown={handleKeyDownInput}
-          className="pl-9 pr-16 h-11 text-base font-medium"
+          className="pl-9 pr-4 h-11 text-base font-medium"
           autoFocus
         />
-        <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1">
-          <kbd className="hidden sm:inline-block pointer-events-none h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground opacity-100">
-            F2
-          </kbd>
-        </div>
       </div>
 
       {/* Resultados de búsqueda en cuadrícula */}
@@ -169,7 +166,7 @@ export function PosSearch({ productosIniciales }: PosSearchProps) {
                     <div>
                       <span className="text-xs text-muted-foreground block">Precio</span>
                       <span className="text-base font-bold text-emerald-600 dark:text-emerald-400">
-                        ${Number(p.precio_venta_usd).toFixed(2)}
+                        {formatUSD(p.precio_venta_usd)}
                       </span>
                     </div>
 
@@ -185,7 +182,7 @@ export function PosSearch({ productosIniciales }: PosSearchProps) {
                               : "text-foreground"
                           }`}
                         >
-                          {p.stock_actual} {p.unidad_medida}s
+                          {formatNumero(p.stock_actual)} {p.unidad_medida}s
                         </span>
                       </div>
 
