@@ -53,9 +53,13 @@ export async function updateSession(request: NextRequest) {
   }
 
   // If user is not signed in and the route is not /login, redirect to /login
+  const path = request.nextUrl.pathname;
   if (
     !user &&
-    !request.nextUrl.pathname.startsWith("/login")
+    !path.startsWith("/login") &&
+    !path.startsWith("/sw.js") &&
+    !path.startsWith("/workbox-") &&
+    !path.startsWith("/manifest.json")
   ) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
