@@ -3,10 +3,11 @@
 import { useState, useEffect, useRef } from "react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Search, Plus, Sparkles, Package, CornerDownLeft } from "lucide-react";
+import { Search, Plus, Sparkles, Package, CornerDownLeft, WifiOff } from "lucide-react";
 import type { Producto } from "@/lib/types/database";
 import { usePosCart } from "./pos-cart-context";
 import { buscarProductosPOS } from "@/app/dashboard/pos/actions";
+import { buscarProductosOffline } from "@/lib/offline/sync-cache";
 
 interface PosSearchProps {
   productosIniciales: Producto[];
@@ -17,6 +18,7 @@ export function PosSearch({ productosIniciales }: PosSearchProps) {
   const [query, setQuery] = useState("");
   const [productos, setProductos] = useState<Producto[]>(productosIniciales);
   const [buscando, setBuscando] = useState(false);
+  const [esOffline, setEsOffline] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -41,9 +43,34 @@ export function PosSearch({ productosIniciales }: PosSearchProps) {
     const timer = setTimeout(async () => {
       setBuscando(true);
       try {
+        if (!navigator.onLine) {
+          const offlineRes = await buscarProductosOffline(query);
+          if (active) {
+            setProductos(offlineRes);
+            setEsOffline(true);
+            setSelectedIndex(0);
+          }
+          return;
+        }
+
         const res = await buscarProductosPOS(query);
         if (active) {
-          setProductos(res);
+          if (res && res.length > 0) {
+            setProductos(res);
+            setEsOffline(false);
+          } else {
+            // Intentar fallback offline por si la query devuelve resultados en caché local
+            const offlineRes = await buscarProductosOffline(query);
+            setProductos(offlineRes.length > 0 ? offlineRes : []);
+          }
+          setSelectedIndex(0);
+        }
+      } catch (err) {
+        // En caso de error de red en la Server Action
+        const offlineRes = await buscarProductosOffline(query);
+        if (active) {
+          setProductos(offlineRes);
+          setEsOffline(true);
           setSelectedIndex(0);
         }
       } finally {

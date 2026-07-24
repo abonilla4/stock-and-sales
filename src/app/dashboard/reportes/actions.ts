@@ -281,7 +281,7 @@ export async function obtenerReporteMargenGanancia(
 
   const { data: detalles } = await supabase
     .from("detalle_venta")
-    .select("cantidad, subtotal_usd, productos(precio_costo_usd)")
+    .select("cantidad, subtotal_usd, costo_unitario_usd")
     .in("venta_id", ventaIds);
 
   let ingresosTotalesUsd = 0;
@@ -291,11 +291,10 @@ export async function obtenerReporteMargenGanancia(
     detalles.forEach((d) => {
       const subtotal = Number(d.subtotal_usd || 0);
       const cantidad = Number(d.cantidad || 0);
-      const prod = d.productos as unknown as { precio_costo_usd?: number } | null;
-      const precioCosto = Number(prod?.precio_costo_usd || 0);
+      const costoUnitario = Number(d.costo_unitario_usd || 0);
 
       ingresosTotalesUsd += subtotal;
-      costoVentasUsd += cantidad * precioCosto;
+      costoVentasUsd += cantidad * costoUnitario;
     });
   }
 

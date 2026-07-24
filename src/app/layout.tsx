@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { IBM_Plex_Sans, IBM_Plex_Mono } from "next/font/google";
 import { Toaster } from "@/components/ui/sonner";
+import { ServiceWorkerRegister } from "@/components/sw-register";
 import "./globals.css";
 
 const plexSans = IBM_Plex_Sans({
@@ -19,6 +20,7 @@ export const metadata: Metadata = {
   title: "Stock & Sales — Sistema de Inventario y Ventas",
   description:
     "Sistema de gestión de inventario y control de ventas para ferretería. Moneda dual USD/Bs, punto de venta rápido, control de crédito.",
+  manifest: "/manifest.json",
 };
 
 export default function RootLayout({
@@ -34,6 +36,7 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col font-sans">
         {children}
         <Toaster richColors position="bottom-right" />
+        <ServiceWorkerRegister />
       </body>
     </html>
   );

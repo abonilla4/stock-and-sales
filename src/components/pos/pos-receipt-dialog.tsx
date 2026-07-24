@@ -23,6 +23,7 @@ export interface ReciboVentaData {
   descuento_usd?: number;
   metodo_pago?: MetodoPago;
   cliente_nombre?: string;
+  esOffline?: boolean;
   items?: {
     nombre: string;
     cantidad: number;
@@ -73,12 +74,20 @@ export function PosReceiptDialog({
             <CheckCircle2 className="size-7" />
           </div>
           <DialogTitle className="text-center text-xl font-bold">
-            ¡Venta Registrada Exitosamente!
+            {recibo.esOffline ? "Venta Registrada Offline" : "¡Venta Registrada Exitosamente!"}
           </DialogTitle>
           <p className="text-xs text-muted-foreground font-mono">
-            Comprobante Nº: {recibo.venta_id.substring(0, 8).toUpperCase()}
+            {recibo.esOffline
+              ? "Comprobante preliminar — pendiente de sincronizar, sin folio definitivo"
+              : `Comprobante Nº: ${recibo.venta_id.substring(0, 8).toUpperCase()}`}
           </p>
         </DialogHeader>
+
+        {recibo.esOffline && (
+          <div className="rounded-md bg-amber-500/10 border border-amber-500/30 p-2.5 text-center text-amber-700 dark:text-amber-400 font-sans text-xs">
+            ⚠️ <strong>Comprobante preliminar</strong> — pendiente de sincronizar, sin folio definitivo
+          </div>
+        )}
 
         {/* Formato de Recibo Imprimible */}
         <div id="recibo-print" className="space-y-4 rounded-lg border bg-card p-4 text-xs font-mono">

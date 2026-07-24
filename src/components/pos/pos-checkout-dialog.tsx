@@ -35,7 +35,8 @@ import {
 import { toast } from "sonner";
 import type { Cliente, MetodoPago } from "@/lib/types/database";
 import { usePosCart } from "./pos-cart-context";
-import { confirmarVentaPOS } from "@/app/dashboard/pos/actions";
+import { procesarVentaPOS } from "@/lib/offline/sales-manager";
+import { useOfflineNetwork } from "@/components/offline-network-context";
 import { AdminAuthDialog } from "./admin-auth-dialog";
 import { PosReceiptDialog, type ReciboVentaData } from "./pos-receipt-dialog";
 
@@ -74,6 +75,8 @@ export function PosCheckoutDialog({
     totalBs,
   } = usePosCart();
 
+  const { isSimulatedOffline, isOnline, refreshPendingCount } = useOfflineNetwork();
+
   const [clienteId, setClienteId] = useState<string>("contado");
   const [metodoPago, setMetodoPago] = useState<MetodoPago>("efectivo_usd");
   const [montoRecibidoBs, setMontoRecibidoBs] = useState<string>("");
@@ -89,7 +92,7 @@ export function PosCheckoutDialog({
 
   const clienteSeleccionado = clientes.find((c) => c.id === clienteId);
 
-  const ejecutarConfirmacionVenta = async (permitirStockNegativo: boolean = false) => {
+  const ejecutarConfirmacionVenta = async (permitirStockNegativo: boolean = false, autorizadoPor?: string) => {
     setLoading(true);
     try {
       const itemsPayload = items.map((i) => ({
@@ -99,52 +102,49 @@ export function PosCheckoutDialog({
         subtotal_usd: i.subtotal_usd,
       }));
 
-      const res = await confirmarVentaPOS({
-        cliente_id: clienteId === "contado" ? null : clienteId,
-        subtotal_usd: subtotalUsd,
-        descuento_usd: descuentoUsd,
-        total_usd: totalUsd,
-        tasa_cambio_aplicada: tasaActiva,
-        total_bs: totalBs,
-        metodo_pago: metodoPago,
-        items: itemsPayload,
-        permitir_stock_negativo: permitirStockNegativo,
+      const nombresProductosMap: Record<string, string> = {};
+      items.forEach((i) => {
+        nombresProductosMap[i.producto.id] = i.producto.nombre;
       });
 
-      if (res.error) {
+      const res = await procesarVentaPOS(
+        {
+          cliente_id: clienteId === "contado" ? null : clienteId,
+          subtotal_usd: subtotalUsd,
+          descuento_usd: descuentoUsd,
+          total_usd: totalUsd,
+          tasa_cambio_aplicada: tasaActiva,
+          total_bs: totalBs,
+          metodo_pago: metodoPago,
+          items: itemsPayload,
+          permitir_stock_negativo: permitirStockNegativo,
+          autorizado_por: autorizadoPor ?? null,
+        },
+        nombresProductosMap,
+        clienteSeleccionado?.nombre,
+        isSimulatedOffline || !isOnline
+      );
+
+      if (!res.success) {
         if (res.esErrorStock) {
-          // Abrir modal de autorización si falta stock
           toast.warning("Stock insuficiente. Se requiere autorización de Administrador.");
           setAdminAuthOpen(true);
         } else {
-          toast.error(res.error);
+          toast.error(res.error || "Error al procesar la venta.");
         }
         return;
       }
 
       if (res.success && res.recibo) {
-        toast.success("Venta procesada exitosamente.");
-        const reciboObj: ReciboVentaData = {
-          venta_id: res.recibo.venta_id,
-          fecha: res.recibo.fecha,
-          total_usd: res.recibo.total_usd,
-          total_bs: res.recibo.total_bs,
-          tasa_cambio_aplicada: res.recibo.tasa_cambio_aplicada,
-          subtotal_usd: subtotalUsd,
-          descuento_usd: descuentoUsd,
-          metodo_pago: metodoPago,
-          cliente_nombre: clienteSeleccionado?.nombre,
-          items: items.map((i) => ({
-            nombre: i.producto.nombre,
-            cantidad: i.cantidad,
-            unidad_medida: i.producto.unidad_medida,
-            precio_unitario_usd: i.precio_unitario_usd,
-            subtotal_usd: i.subtotal_usd,
-          })),
-        };
+        if (res.esOffline) {
+          toast.info("Venta registrada localmente (Modo Offline). Se sincronizará al conectar.");
+          await refreshPendingCount();
+        } else {
+          toast.success("Venta procesada exitosamente en línea.");
+        }
 
         onOpenChange(false);
-        onVentaExitosa(reciboObj);
+        onVentaExitosa(res.recibo);
       }
     } catch {
       toast.error("Error al procesar la transacción.");
@@ -304,9 +304,9 @@ export function PosCheckoutDialog({
         <AdminAuthDialog
           open={adminAuthOpen}
           onOpenChange={setAdminAuthOpen}
-          onAutorizado={() => {
+          onAutorizado={(adminUserId) => {
             setAutorizadoPorAdmin(true);
-            ejecutarConfirmacionVenta(true);
+            ejecutarConfirmacionVenta(true, adminUserId);
           }}
         />
       )}

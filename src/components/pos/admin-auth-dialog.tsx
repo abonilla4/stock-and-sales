@@ -19,7 +19,7 @@ import { autorizarVentaAdmin } from "@/app/dashboard/pos/actions";
 interface AdminAuthDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onAutorizado: () => void;
+  onAutorizado: (adminUserId: string) => void;
 }
 
 export function AdminAuthDialog({
@@ -45,10 +45,15 @@ export function AdminAuthDialog({
         return;
       }
 
+      if (!res.adminUserId) {
+        setError("Error inesperado: no se obtuvo el ID del administrador.");
+        return;
+      }
+
       toast.success("Autorización de Administrador concedida.");
       setPassword("");
       onOpenChange(false);
-      onAutorizado();
+      onAutorizado(res.adminUserId);
     } catch {
       setError("Error inesperado al verificar autorización.");
     } finally {

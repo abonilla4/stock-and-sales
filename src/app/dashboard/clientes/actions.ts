@@ -174,7 +174,11 @@ export interface RegistrarAbonoParams {
 }
 
 /**
- * Registrar un abono a la cuenta del cliente (RPC + Fallback Server Action).
+ * Registrar un abono a la cuenta del cliente vía RPC atómica `registrar_abono_fiado`.
+ *
+ * La RPC maneja atómicamente: inserción en pagos_fiado + descuento de saldo_fiado.
+ *
+ * NO hay fallback: si la RPC falla, se retorna el error directamente.
  */
 export async function registrarAbonoCliente(params: RegistrarAbonoParams) {
   const supabase = await createClient();
@@ -191,7 +195,7 @@ export async function registrarAbonoCliente(params: RegistrarAbonoParams) {
     return { error: "El monto del abono debe ser mayor a $0.00 USD." };
   }
 
-  // 1. Intentar llamar a la RPC atómica `registrar_abono_fiado`
+  // Llamar a la RPC atómica (única vía de modificación de saldo_fiado)
   const { data: rpcData, error: rpcError } = await supabase.rpc("registrar_abono_fiado", {
     p_cliente_id: params.cliente_id,
     p_monto_usd: params.monto_usd,
@@ -201,78 +205,19 @@ export async function registrarAbonoCliente(params: RegistrarAbonoParams) {
     p_notas: params.notas ?? null,
   });
 
-  if (!rpcError) {
-    revalidatePath("/dashboard/clientes");
-    revalidatePath(`/dashboard/clientes/${params.cliente_id}`);
-    revalidatePath("/dashboard/pos");
-
-    return {
-      success: true,
-      data: rpcData,
-    };
-  }
-
-  // 2. Fallback Transaccional en Server Action si la RPC aún no está creada en Supabase Cloud
-  console.warn("RPC registrar_abono_fiado no disponible. Ejecutando fallback...", rpcError.message);
-
-  const { data: clienteActual, error: clienteError } = await supabase
-    .from("clientes")
-    .select("saldo_fiado")
-    .eq("id", params.cliente_id)
-    .single();
-
-  if (clienteError || !clienteActual) {
-    return { error: "No se pudo obtener el cliente para registrar el abono." };
-  }
-
-  const fechaPago = new Date().toISOString();
-  const { data: pagoRegistrado, error: pagoError } = await supabase
-    .from("pagos_fiado")
-    .insert({
-      cliente_id: params.cliente_id,
-      venta_id: params.venta_id ?? null,
-      monto_usd: params.monto_usd,
-      monto_bs: params.monto_bs ?? null,
-      metodo_pago: params.metodo_pago,
-      fecha: fechaPago,
-      notas: params.notas ?? null,
-    })
-    .select("id")
-    .single();
-
-  if (pagoError || !pagoRegistrado) {
-    console.error("Error al insertar abono en pagos_fiado:", pagoError);
-    return { error: `Error de base de datos al registrar abono: ${pagoError?.message}` };
-  }
-
-  // Descontar de saldo_fiado (mínimo 0)
-  const nuevoSaldo = Math.max(0, Number(((clienteActual.saldo_fiado || 0) - params.monto_usd).toFixed(2)));
-
-  const { error: updateError } = await supabase
-    .from("clientes")
-    .update({
-      saldo_fiado: nuevoSaldo,
-      updated_at: fechaPago,
-    })
-    .eq("id", params.cliente_id);
-
-  if (updateError) {
-    console.error("Error al actualizar saldo_fiado:", updateError);
+  if (rpcError) {
+    console.error("Error en RPC registrar_abono_fiado:", rpcError.message);
+    return { error: `Error al registrar abono: ${rpcError.message}` };
   }
 
   revalidatePath("/dashboard/clientes");
   revalidatePath(`/dashboard/clientes/${params.cliente_id}`);
   revalidatePath("/dashboard/pos");
+  revalidatePath("/dashboard");
 
   return {
     success: true,
-    data: {
-      pago_id: pagoRegistrado.id,
-      cliente_id: params.cliente_id,
-      monto_usd: params.monto_usd,
-      monto_bs: params.monto_bs,
-      nuevo_saldo_usd: nuevoSaldo,
-      fecha: fechaPago,
-    },
+    data: rpcData,
   };
 }
+

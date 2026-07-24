@@ -6,6 +6,7 @@ import { Menu } from "lucide-react";
 import { Sidebar } from "@/components/sidebar";
 import { Badge } from "@/components/ui/badge";
 import { LogoutButton } from "@/app/dashboard/logout-button";
+import { NetworkStatusBadge } from "@/components/network-status-badge";
 
 interface DashboardShellProps {
   children: React.ReactNode;
@@ -73,6 +74,9 @@ export function DashboardShell({
           </nav>
 
           <div className="ml-auto flex items-center gap-3">
+            {/* Indicador de estado de red (Offline/Online + Sincronización) */}
+            <NetworkStatusBadge />
+
             <span className="hidden text-xs text-muted-foreground sm:inline-block">
               {userEmail}
             </span>

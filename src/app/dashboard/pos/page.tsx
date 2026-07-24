@@ -6,6 +6,7 @@ import { PosCartProvider } from "@/components/pos/pos-cart-context";
 import { PosSearch } from "@/components/pos/pos-search";
 import { PosCart } from "@/components/pos/pos-cart";
 import { TasaAlertaBanner } from "@/components/tasa-alerta-banner";
+import { PosOfflineCacheSync } from "@/components/pos/pos-offline-cache-sync";
 
 export default async function PosPage() {
   const supabase = await createClient();
@@ -33,6 +34,13 @@ export default async function PosPage() {
 
   return (
     <div className="flex flex-col h-[calc(100vh-4.5rem)] space-y-4">
+      {/* Sincronizador de datos a la caché de IndexedDB */}
+      <PosOfflineCacheSync
+        productos={productosIniciales}
+        clientes={clientes}
+        tasaActivaData={tasaActivaData}
+      />
+
       {/* Alerta de tasa de cambio si es mayor a 24h o no existe */}
       <TasaAlertaBanner
         tasaActiva={tasaActiva}

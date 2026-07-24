@@ -194,60 +194,21 @@ export async function registrarMovimiento(formData: FormData) {
     return { error: "El motivo es obligatorio para salidas y ajustes." };
   }
 
-  // Obtener stock actual
-  const { data: producto, error: fetchError } = await supabase
-    .from("productos")
-    .select("stock_actual, nombre")
-    .eq("id", producto_id)
-    .single();
+  // Llamar a la RPC atómica (única vía de modificación de stock_actual)
+  const { data: rpcData, error: rpcError } = await supabase.rpc("registrar_movimiento_inventario", {
+    p_producto_id: producto_id,
+    p_tipo: tipo,
+    p_cantidad: cantidad,
+    p_motivo: motivo,
+  });
 
-  if (fetchError || !producto) {
-    return { error: "Producto no encontrado." };
+  if (rpcError) {
+    console.error("Error en RPC registrar_movimiento_inventario:", rpcError.message);
+    return { error: `Error al registrar movimiento: ${rpcError.message}` };
   }
 
-  // Calcular nuevo stock
-  let nuevoStock: number;
-  if (tipo === "entrada") {
-    nuevoStock = producto.stock_actual + cantidad;
-  } else {
-    // salida o ajuste → resta
-    nuevoStock = producto.stock_actual - cantidad;
-  }
-
-  // Advertencia si stock < 0 (no bloquea — per 03-Flujo-App.md §8)
-  const advertencia =
-    nuevoStock < 0
-      ? `⚠️ El stock de "${producto.nombre}" quedará en ${nuevoStock}. Se registró el movimiento.`
-      : null;
-
-  // Insertar movimiento
-  const { error: movError } = await supabase
-    .from("movimientos_inventario")
-    .insert({
-      producto_id,
-      tipo,
-      cantidad,
-      motivo,
-    });
-
-  if (movError) {
-    console.error("Error registrando movimiento:", movError);
-    return { error: `Error al registrar movimiento: ${movError.message}` };
-  }
-
-  // Actualizar stock_actual
-  const { error: updateError } = await supabase
-    .from("productos")
-    .update({
-      stock_actual: nuevoStock,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", producto_id);
-
-  if (updateError) {
-    console.error("Error actualizando stock:", updateError);
-    return { error: `Movimiento registrado pero error al actualizar stock: ${updateError.message}` };
-  }
+  const nuevoStock = rpcData?.nuevo_stock ?? null;
+  const advertencia = rpcData?.advertencia ?? null;
 
   revalidatePath("/dashboard/inventario");
   revalidatePath(`/dashboard/inventario/${producto_id}`);
