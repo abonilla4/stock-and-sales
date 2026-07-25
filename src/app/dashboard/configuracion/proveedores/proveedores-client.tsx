@@ -119,6 +119,7 @@ export function ProveedoresClient({
 
         <Dialog
           open={dialogOpen}
+          disablePointerDismissal={true}
           onOpenChange={(v) => {
             setDialogOpen(v);
             if (!v) {

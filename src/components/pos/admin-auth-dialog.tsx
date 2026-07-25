@@ -62,7 +62,7 @@ export function AdminAuthDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={onOpenChange} disablePointerDismissal={true}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <div className="mx-auto flex size-12 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-950/60 mb-2">

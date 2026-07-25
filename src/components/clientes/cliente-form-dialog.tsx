@@ -65,7 +65,7 @@ export function ClienteFormDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={onOpenChange} disablePointerDismissal={true}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <div className="mx-auto flex size-10 items-center justify-center rounded-full bg-primary/10 text-primary mb-1">

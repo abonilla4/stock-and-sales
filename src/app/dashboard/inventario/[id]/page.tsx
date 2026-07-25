@@ -20,6 +20,7 @@ import {
   ArrowDownCircle,
   Settings2,
   ShoppingCart,
+  ArrowLeft,
 } from "lucide-react";
 import { MovimientoDialog } from "@/components/movimiento-dialog";
 import { ToggleActivoButton } from "./toggle-activo-button";
@@ -39,23 +40,29 @@ export default async function ProductoDetallePage({
   const profile = await getPerfil();
   const isAdmin = profile?.role === "admin";
 
-  // Fetch producto con joins
-  const { data: producto } = await supabase
-    .from("productos")
-    .select(
-      "*, categorias(nombre), proveedores(nombre)"
-    )
-    .eq("id", id)
-    .single();
+  // Fetch producto con joins, movimientos y lista de proveedores
+  const [
+    { data: producto },
+    { data: movimientos },
+    { data: proveedores },
+  ] = await Promise.all([
+    supabase
+      .from("productos")
+      .select("*, categorias(nombre), proveedores(nombre)")
+      .eq("id", id)
+      .single(),
+    supabase
+      .from("movimientos_inventario")
+      .select("*")
+      .eq("producto_id", id)
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("proveedores")
+      .select("id, nombre")
+      .order("nombre"),
+  ]);
 
   if (!producto) notFound();
-
-  // Fetch movimientos de inventario
-  const { data: movimientos } = await supabase
-    .from("movimientos_inventario")
-    .select("*")
-    .eq("producto_id", id)
-    .order("created_at", { ascending: false });
 
   const stockBajo =
     producto.activo && producto.stock_actual <= producto.stock_minimo;
@@ -79,6 +86,13 @@ export default async function ProductoDetallePage({
 
   return (
     <div className="space-y-6">
+      {/* Botón Volver a Inventario */}
+      <div>
+        <Button variant="ghost" size="sm" render={<Link href="/dashboard/inventario" />}>
+          <ArrowLeft className="mr-1.5 size-4" /> Volver a Inventario
+        </Button>
+      </div>
+
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="space-y-1">
@@ -112,6 +126,9 @@ export default async function ProductoDetallePage({
               productoNombre={producto.nombre}
               stockActual={producto.stock_actual}
               unidadMedida={producto.unidad_medida}
+              proveedores={proveedores ?? []}
+              proveedorIdActual={producto.proveedor_id}
+              proveedorNombreActual={proveedor?.nombre}
             />
             <Button variant="outline" size="sm" render={<Link href={`/dashboard/inventario/${id}/editar`} />}>
               <Pencil className="size-4" />

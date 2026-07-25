@@ -109,6 +109,7 @@ export function CategoriasClient({
 
         <Dialog
           open={dialogOpen}
+          disablePointerDismissal={true}
           onOpenChange={(v) => {
             setDialogOpen(v);
             if (!v) setEditingCat(null);

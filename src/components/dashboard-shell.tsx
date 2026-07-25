@@ -8,11 +8,16 @@ import { Badge } from "@/components/ui/badge";
 import { LogoutButton } from "@/app/dashboard/logout-button";
 import { NetworkStatusBadge } from "@/components/network-status-badge";
 
+import Link from "next/link";
+
 interface DashboardShellProps {
   children: React.ReactNode;
   userEmail: string;
   role: "admin" | "cajero";
 }
+
+const isUUID = (str: string) =>
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
 
 export function DashboardShell({
   children,
@@ -25,13 +30,16 @@ export function DashboardShell({
   // Build breadcrumb from pathname
   const segments = pathname.split("/").filter(Boolean);
   const breadcrumbLabels: Record<string, string> = {
-    dashboard: "Dashboard",
+    dashboard: "Inicio",
     inventario: "Inventario",
     nuevo: "Nuevo Producto",
     editar: "Editar",
     configuracion: "Configuración",
     categorias: "Categorías",
     proveedores: "Proveedores",
+    clientes: "Clientes",
+    pos: "Punto de Venta",
+    reportes: "Reportes",
   };
 
   return (
@@ -51,23 +59,39 @@ export function DashboardShell({
           {/* Breadcrumb */}
           <nav className="flex items-center gap-1.5 text-sm">
             {segments.map((segment, i) => {
-              const label =
-                breadcrumbLabels[segment] || decodeURIComponent(segment);
+              const prevSegment = segments[i - 1];
+              let label = breadcrumbLabels[segment];
+
+              if (!label) {
+                if (isUUID(segment)) {
+                  if (prevSegment === "inventario") label = "Detalle de Producto";
+                  else if (prevSegment === "clientes") label = "Detalle de Cliente";
+                  else label = "Detalle";
+                } else {
+                  label = decodeURIComponent(segment);
+                }
+              }
+
               const isLast = i === segments.length - 1;
+              const href = "/" + segments.slice(0, i + 1).join("/");
+
               return (
                 <span key={segment + i} className="flex items-center gap-1.5">
                   {i > 0 && (
-                    <span className="text-muted-foreground/50">/</span>
+                    <span className="text-muted-foreground/40 font-mono">/</span>
                   )}
-                  <span
-                    className={
-                      isLast
-                        ? "font-medium text-foreground"
-                        : "text-muted-foreground"
-                    }
-                  >
-                    {label}
-                  </span>
+                  {isLast ? (
+                    <span className="font-medium text-foreground">
+                      {label}
+                    </span>
+                  ) : (
+                    <Link
+                      href={href}
+                      className="text-muted-foreground hover:text-foreground hover:underline transition-colors"
+                    >
+                      {label}
+                    </Link>
+                  )}
                 </span>
               );
             })}

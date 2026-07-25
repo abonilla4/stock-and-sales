@@ -180,7 +180,8 @@ export async function registrarMovimiento(formData: FormData) {
   const producto_id = formData.get("producto_id") as string;
   const tipo = formData.get("tipo") as TipoMovimiento;
   const cantidad = parseFloat(formData.get("cantidad") as string);
-  const motivo = (formData.get("motivo") as string) || null;
+  let motivo = (formData.get("motivo") as string) || null;
+  const proveedor_id = (formData.get("proveedor_id") as string) || null;
 
   // Validaciones — per 03-Flujo-App.md §4 y 05-Esquema-Backend.md §2
   if (!producto_id || !tipo) {
@@ -194,13 +195,49 @@ export async function registrarMovimiento(formData: FormData) {
     return { error: "El motivo es obligatorio para salidas y ajustes." };
   }
 
-  // Llamar a la RPC atómica (única vía de modificación de stock_actual)
-  const { data: rpcData, error: rpcError } = await supabase.rpc("registrar_movimiento_inventario", {
+  // Si es una entrada y se seleccionó un proveedor, enviarlo a la RPC
+  const proveedorIdFinal = (tipo === "entrada" && proveedor_id && proveedor_id !== "none")
+    ? proveedor_id
+    : null;
+
+  if (proveedorIdFinal) {
+    await supabase
+      .from("productos")
+      .update({ proveedor_id: proveedorIdFinal, updated_at: new Date().toISOString() })
+      .eq("id", producto_id);
+
+    const { data: prov } = await supabase
+      .from("proveedores")
+      .select("nombre")
+      .eq("id", proveedorIdFinal)
+      .maybeSingle();
+
+    if (prov?.nombre && (!motivo || !motivo.includes("Proveedor:"))) {
+      motivo = motivo
+        ? `[Proveedor: ${prov.nombre}] ${motivo}`
+        : `Proveedor: ${prov.nombre}`;
+    }
+  }
+
+  // Llamar a la RPC atómica (con fallback defensivo a 4 parámetros si la RPC aún no tiene p_proveedor_id en Postgres)
+  let { data: rpcData, error: rpcError } = await supabase.rpc("registrar_movimiento_inventario", {
     p_producto_id: producto_id,
     p_tipo: tipo,
     p_cantidad: cantidad,
     p_motivo: motivo,
+    p_proveedor_id: proveedorIdFinal,
   });
+
+  if (rpcError && (rpcError.code === "PGRST202" || rpcError.message?.includes("PGRST202"))) {
+    const resFallback = await supabase.rpc("registrar_movimiento_inventario", {
+      p_producto_id: producto_id,
+      p_tipo: tipo,
+      p_cantidad: cantidad,
+      p_motivo: motivo,
+    });
+    rpcData = resFallback.data;
+    rpcError = resFallback.error;
+  }
 
   if (rpcError) {
     console.error("Error en RPC registrar_movimiento_inventario:", rpcError.message);
