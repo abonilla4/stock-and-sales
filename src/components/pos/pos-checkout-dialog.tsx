@@ -41,6 +41,7 @@ import { AdminAuthDialog } from "./admin-auth-dialog";
 import { PosReceiptDialog, type ReciboVentaData } from "./pos-receipt-dialog";
 
 import { formatUSD, formatBs } from "@/lib/formatters";
+import { MAX_DESCUENTO_PORCENTAJE_SIN_AUTORIZACION } from "@/lib/config/limites";
 
 interface PosCheckoutDialogProps {
   open: boolean;
@@ -84,9 +85,14 @@ export function PosCheckoutDialog({
   const [montoRecibidoBs, setMontoRecibidoBs] = useState<string>("");
   const [loading, setLoading] = useState(false);
 
-  // Modal de autorización admin cuando hay stock insuficiente
+  // Modal de autorización admin cuando hay stock insuficiente o descuento mayor al límite
   const [adminAuthOpen, setAdminAuthOpen] = useState(false);
   const [autorizadoPorAdmin, setAutorizadoPorAdmin] = useState(false);
+
+  // Verificación de límite de descuento (5%)
+  const porcentajeDescuento = subtotalUsd > 0 ? (descuentoUsd / subtotalUsd) * 100 : 0;
+  const excedeDescuentoPermitido = porcentajeDescuento > MAX_DESCUENTO_PORCENTAJE_SIN_AUTORIZACION;
+  const requiereAutorizacionAdmin = tieneStockInsuficiente || excedeDescuentoPermitido;
 
   // Cálculo de vuelto para efectivo Bs
   const montoRecibidoNum = parseFloat(montoRecibidoBs) || 0;
@@ -129,7 +135,7 @@ export function PosCheckoutDialog({
 
       if (!res.success) {
         if (res.esErrorStock) {
-          toast.warning("Stock insuficiente. Se requiere autorización de Administrador.");
+          toast.warning("Se requiere autorización de Administrador.");
           setAdminAuthOpen(true);
         } else {
           toast.error(res.error || "Error al procesar la venta.");
@@ -163,12 +169,12 @@ export function PosCheckoutDialog({
       return;
     }
 
-    if (tieneStockInsuficiente && !autorizadoPorAdmin) {
+    if (requiereAutorizacionAdmin && !autorizadoPorAdmin) {
       setAdminAuthOpen(true);
       return;
     }
 
-    ejecutarConfirmacionVenta(autorizadoPorAdmin);
+    ejecutarConfirmacionVenta(tieneStockInsuficiente || excedeDescuentoPermitido, undefined);
   };
 
   return (
@@ -286,8 +292,8 @@ export function PosCheckoutDialog({
               </div>
             </div>
 
-            {/* Advertencia de stock insuficiente si aplica */}
-            {tieneStockInsuficiente && (
+            {/* Advertencia de autorización de Administrador si requiere por stock o descuento */}
+            {requiereAutorizacionAdmin && (
               <div className="rounded-md border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-300 space-y-1">
                 <div className="flex items-center gap-1.5 font-semibold">
                   <ShieldAlert className="size-4 text-amber-600" />
@@ -296,7 +302,11 @@ export function PosCheckoutDialog({
                 <p>
                   {autorizadoPorAdmin
                     ? "✓ Venta previamente autorizada por clave Admin."
-                    : "Al hacer clic en Confirmar, se solicitará la clave de Administrador para descontar el stock e ingresar unidades negativas auditadas."}
+                    : excedeDescuentoPermitido && tieneStockInsuficiente
+                    ? `El descuento del ${porcentajeDescuento.toFixed(1)}% excede el límite del 5% y existe stock insuficiente. Se requerirá la clave de Administrador.`
+                    : excedeDescuentoPermitido
+                    ? `El descuento del ${porcentajeDescuento.toFixed(1)}% excede el límite permitido sin autorización (5%). Se requerirá la clave de Administrador.`
+                    : "Existe producto con stock insuficiente. Se requerirá la clave de Administrador."}
                 </p>
               </div>
             )}
