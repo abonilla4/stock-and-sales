@@ -1,14 +1,20 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { loginSchema, getZodErrorMessage } from "@/lib/schemas/actions-schemas";
 
 export async function loginAction(formData: FormData) {
-  const email = formData.get("email") as string;
-  const password = formData.get("password") as string;
+  const rawData = {
+    email: formData.get("email") as string,
+    password: formData.get("password") as string,
+  };
 
-  if (!email || !password) {
-    return { error: "Por favor ingresa tu correo y contraseña." };
+  const parseResult = loginSchema.safeParse(rawData);
+  if (!parseResult.success) {
+    return { error: getZodErrorMessage(parseResult.error) };
   }
+
+  const { email, password } = parseResult.data;
 
   const supabase = await createClient();
 

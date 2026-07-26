@@ -74,6 +74,8 @@ export interface ConfirmarVentaParams {
   origen_autorizacion?: "admin_online" | "offline_diferido" | null;
 }
 
+import { confirmarVentaSchema, getZodErrorMessage } from "@/lib/schemas/actions-schemas";
+
 /**
  * Confirmar una venta llamando a la RPC atómica `procesar_venta_transaccion`.
  *
@@ -83,6 +85,12 @@ export interface ConfirmarVentaParams {
  * NO hay fallback: si la RPC falla, se retorna el error directamente.
  */
 export async function confirmarVentaPOS(params: ConfirmarVentaParams) {
+  // Validación de esquema Zod antes de consultar la BD
+  const parseResult = confirmarVentaSchema.safeParse(params);
+  if (!parseResult.success) {
+    return { error: getZodErrorMessage(parseResult.error) };
+  }
+
   const supabase = await createClient();
 
   const {
@@ -91,10 +99,6 @@ export async function confirmarVentaPOS(params: ConfirmarVentaParams) {
 
   if (!user) {
     return { error: "Sesión expirada. Por favor inicie sesión de nuevo." };
-  }
-
-  if (!params.items || params.items.length === 0) {
-    return { error: "El carrito de venta no contiene ningún producto." };
   }
 
   // Resolver autorización y su origen auditado
@@ -129,7 +133,11 @@ export async function confirmarVentaPOS(params: ConfirmarVentaParams) {
 
   if (rpcError) {
     // Distinguir errores de stock para UX diferenciada en el frontend
-    if (rpcError.message.includes("Stock insuficiente")) {
+    if (
+      rpcError.message.includes("Stock insuficiente") ||
+      rpcError.message.includes("autorización") ||
+      rpcError.message.includes("descuento")
+    ) {
       return {
         error: rpcError.message,
         esErrorStock: true,
@@ -152,7 +160,8 @@ export async function confirmarVentaPOS(params: ConfirmarVentaParams) {
 }
 
 /**
- * Validar credenciales de un Administrador para autorizar venta con stock insuficiente.
+ * Validar credenciales de un Administrador para autorizar venta con stock insuficiente/descuento.
+ * Incluye Rate Limiting atómico con pg_advisory_xact_lock en la RPC verificar_y_registrar_intento_admin.
  */
 export async function autorizarVentaAdmin(password: string) {
   const supabase = await createClient();
@@ -165,7 +174,7 @@ export async function autorizarVentaAdmin(password: string) {
     return { error: "Usuario actual no válido." };
   }
 
-  // Validar si el usuario actual es admin intentando re-autenticar o verificar rol
+  // Validar si el usuario actual es admin
   const { data: perfil } = await supabase
     .from("profiles")
     .select("role")
@@ -176,14 +185,38 @@ export async function autorizarVentaAdmin(password: string) {
     return { error: "El usuario actual no tiene rol de Administrador para autorizar esta acción." };
   }
 
-  // Verificar la contraseña del administrador contra Supabase Auth
+  // 1. Intentar autenticar la contraseña del administrador contra Supabase Auth
   const { error: authError } = await supabase.auth.signInWithPassword({
     email: user.email,
     password: password,
   });
 
-  if (authError) {
-    return { error: "Contraseña de Administrador incorrecta." };
+  const exitoAutenticacion = !authError;
+
+  // 2. Invocar la RPC atómica con pg_advisory_xact_lock para verificar el límite y registrar auditoría
+  const { data: rpcRes, error: rpcErr } = await supabase.rpc("verificar_y_registrar_intento_admin", {
+    p_usuario_id: user.id,
+    p_email: user.email,
+    p_exito: exitoAutenticacion,
+  });
+
+  if (rpcErr) {
+    console.error("Error al registrar auditoría de intento admin:", rpcErr.message);
+  }
+
+  // 3. Si la RPC detectó que ya estaba bloqueado o alcanzó el límite
+  if (rpcRes?.bloqueado) {
+    return {
+      error: rpcRes.mensaje || "Demasiados intentos fallidos. Tu cuenta ha sido bloqueada temporalmente por 5 minutos.",
+      bloqueado: true,
+    };
+  }
+
+  if (!exitoAutenticacion) {
+    const restantes = rpcRes?.intentos_restantes ?? 0;
+    return {
+      error: `Contraseña de Administrador incorrecta. Intentos restantes: ${restantes}.`,
+    };
   }
 
   return { autorizada: true, adminUserId: user.id };

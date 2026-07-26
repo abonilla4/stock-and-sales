@@ -2,19 +2,26 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { crearProveedorSchema, getZodErrorMessage } from "@/lib/schemas/actions-schemas";
 
 export async function crearProveedor(formData: FormData) {
-  const supabase = await createClient();
+  const rawData = {
+    nombre: (formData.get("nombre") as string)?.trim(),
+    codigo: (formData.get("codigo") as string)?.trim() || null,
+    telefono: (formData.get("telefono") as string)?.trim() || null,
+    contacto: (formData.get("contacto") as string)?.trim() || null,
+    notas: (formData.get("notas") as string)?.trim() || null,
+  };
 
-  const nombre = (formData.get("nombre") as string)?.trim();
-  let codigo = (formData.get("codigo") as string)?.trim() || null;
-  const telefono = (formData.get("telefono") as string)?.trim() || null;
-  const contacto = (formData.get("contacto") as string)?.trim() || null;
-  const notas = (formData.get("notas") as string)?.trim() || null;
-
-  if (!nombre) {
-    return { error: "El nombre del proveedor es obligatorio." };
+  const parseResult = crearProveedorSchema.safeParse(rawData);
+  if (!parseResult.success) {
+    return { error: getZodErrorMessage(parseResult.error) };
   }
+
+  const { nombre, telefono, contacto, notas } = parseResult.data;
+  let { codigo } = parseResult.data;
+
+  const supabase = await createClient();
 
   // Verificar que no exista otro proveedor con el mismo nombre (case-insensitive)
   const { data: existente } = await supabase

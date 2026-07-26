@@ -33,28 +33,31 @@ export async function obtenerClientes(query: string = ""): Promise<Cliente[]> {
   return (data ?? []) as Cliente[];
 }
 
+import {
+  crearClienteSchema,
+  registrarAbonoClienteSchema,
+  getZodErrorMessage,
+} from "@/lib/schemas/actions-schemas";
+
 /**
  * Crear un nuevo cliente.
  */
 export async function crearCliente(formData: FormData) {
+  const rawData = {
+    nombre: (formData.get("nombre") as string)?.trim(),
+    identificacion: (formData.get("identificacion") as string)?.trim() || null,
+    telefono: (formData.get("telefono") as string)?.trim() || null,
+    notas: (formData.get("notas") as string)?.trim() || null,
+  };
+
+  const parseResult = crearClienteSchema.safeParse(rawData);
+  if (!parseResult.success) {
+    return { error: getZodErrorMessage(parseResult.error) };
+  }
+
+  const { nombre, identificacion, telefono, notas } = parseResult.data;
+
   const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return { error: "Sesión expirada. Por favor inicie sesión de nuevo." };
-  }
-
-  const nombre = (formData.get("nombre") as string)?.trim();
-  const identificacion = (formData.get("identificacion") as string)?.trim() || null;
-  const telefono = (formData.get("telefono") as string)?.trim() || null;
-  const notas = (formData.get("notas") as string)?.trim() || null;
-
-  if (!nombre) {
-    return { error: "El nombre del cliente es obligatorio." };
-  }
 
   const { data, error } = await supabase
     .from("clientes")
@@ -181,6 +184,11 @@ export interface RegistrarAbonoParams {
  * NO hay fallback: si la RPC falla, se retorna el error directamente.
  */
 export async function registrarAbonoCliente(params: RegistrarAbonoParams) {
+  const parseResult = registrarAbonoClienteSchema.safeParse(params);
+  if (!parseResult.success) {
+    return { error: getZodErrorMessage(parseResult.error) };
+  }
+
   const supabase = await createClient();
 
   const {
@@ -189,10 +197,6 @@ export async function registrarAbonoCliente(params: RegistrarAbonoParams) {
 
   if (!user) {
     return { error: "Sesión expirada. Por favor inicie sesión de nuevo." };
-  }
-
-  if (params.monto_usd <= 0) {
-    return { error: "El monto del abono debe ser mayor a $0.00 USD." };
   }
 
   // Llamar a la RPC atómica (única vía de modificación de saldo_fiado)

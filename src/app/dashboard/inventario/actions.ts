@@ -3,39 +3,51 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import type { UnidadMedida, TipoMovimiento } from "@/lib/types/database";
+import {
+  crearProductoSchema,
+  registrarMovimientoSchema,
+  getZodErrorMessage,
+} from "@/lib/schemas/actions-schemas";
 
 // ──────────────────────────────────────────
 // Productos
 // ──────────────────────────────────────────
 
 export async function crearProducto(formData: FormData) {
+  const rawData = {
+    nombre: formData.get("nombre") as string,
+    sku: formData.get("sku") as string,
+    codigo_barras: (formData.get("codigo_barras") as string) || null,
+    descripcion: (formData.get("descripcion") as string) || null,
+    categoria_id: formData.get("categoria_id") as string,
+    proveedor_id: (formData.get("proveedor_id") as string) || null,
+    unidad_medida: formData.get("unidad_medida") as UnidadMedida,
+    precio_costo_usd: parseFloat(formData.get("precio_costo_usd") as string),
+    precio_venta_usd: parseFloat(formData.get("precio_venta_usd") as string),
+    stock_actual: parseFloat(formData.get("stock_actual") as string),
+    stock_minimo: parseFloat(formData.get("stock_minimo") as string),
+  };
+
+  const parseResult = crearProductoSchema.safeParse(rawData);
+  if (!parseResult.success) {
+    return { error: getZodErrorMessage(parseResult.error) };
+  }
+
+  const {
+    nombre,
+    sku,
+    codigo_barras,
+    descripcion,
+    categoria_id,
+    proveedor_id,
+    unidad_medida,
+    precio_costo_usd,
+    precio_venta_usd,
+    stock_actual: stock_inicial,
+    stock_minimo,
+  } = parseResult.data;
+
   const supabase = await createClient();
-
-  const nombre = formData.get("nombre") as string;
-  const sku = formData.get("sku") as string;
-  const codigo_barras = (formData.get("codigo_barras") as string) || null;
-  const descripcion = (formData.get("descripcion") as string) || null;
-  const categoria_id = formData.get("categoria_id") as string;
-  const proveedor_id = (formData.get("proveedor_id") as string) || null;
-  const unidad_medida = formData.get("unidad_medida") as UnidadMedida;
-  const precio_costo_usd = parseFloat(formData.get("precio_costo_usd") as string);
-  const precio_venta_usd = parseFloat(formData.get("precio_venta_usd") as string);
-  const stock_inicial = parseFloat(formData.get("stock_actual") as string);
-  const stock_minimo = parseFloat(formData.get("stock_minimo") as string);
-
-  // Validación server-side
-  if (!nombre || !sku || !categoria_id || !unidad_medida) {
-    return { error: "Campos obligatorios faltantes: nombre, SKU, categoría y unidad de medida." };
-  }
-  if (isNaN(precio_costo_usd) || precio_costo_usd < 0) {
-    return { error: "Precio de costo inválido." };
-  }
-  if (isNaN(precio_venta_usd) || precio_venta_usd < 0) {
-    return { error: "Precio de venta inválido." };
-  }
-  if (isNaN(stock_inicial) || stock_inicial < 0) {
-    return { error: "Stock inicial inválido." };
-  }
 
   // Verificar SKU único
   const { data: existingSku } = await supabase
@@ -175,25 +187,23 @@ export async function toggleActivoProducto(id: string, activo: boolean) {
 // ──────────────────────────────────────────
 
 export async function registrarMovimiento(formData: FormData) {
+  const rawData = {
+    producto_id: formData.get("producto_id") as string,
+    tipo: formData.get("tipo") as TipoMovimiento,
+    cantidad: parseFloat(formData.get("cantidad") as string),
+    motivo: (formData.get("motivo") as string) || null,
+    proveedor_id: (formData.get("proveedor_id") as string) || null,
+  };
+
+  const parseResult = registrarMovimientoSchema.safeParse(rawData);
+  if (!parseResult.success) {
+    return { error: getZodErrorMessage(parseResult.error) };
+  }
+
+  const { producto_id, tipo, cantidad, proveedor_id } = parseResult.data;
+  let { motivo } = parseResult.data;
+
   const supabase = await createClient();
-
-  const producto_id = formData.get("producto_id") as string;
-  const tipo = formData.get("tipo") as TipoMovimiento;
-  const cantidad = parseFloat(formData.get("cantidad") as string);
-  let motivo = (formData.get("motivo") as string) || null;
-  const proveedor_id = (formData.get("proveedor_id") as string) || null;
-
-  // Validaciones — per 03-Flujo-App.md §4 y 05-Esquema-Backend.md §2
-  if (!producto_id || !tipo) {
-    return { error: "Producto y tipo de movimiento son obligatorios." };
-  }
-  if (isNaN(cantidad) || cantidad <= 0) {
-    return { error: "La cantidad debe ser mayor a cero." };
-  }
-  // Motivo obligatorio en salidas y ajustes (per spec: "obligatorio si tipo = ajuste/salida manual")
-  if ((tipo === "salida" || tipo === "ajuste") && !motivo?.trim()) {
-    return { error: "El motivo es obligatorio para salidas y ajustes." };
-  }
 
   const proveedorIdFinal = (tipo === "entrada" && proveedor_id && proveedor_id !== "none")
     ? proveedor_id
