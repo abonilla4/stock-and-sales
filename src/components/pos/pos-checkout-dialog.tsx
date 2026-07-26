@@ -214,7 +214,19 @@ export function PosCheckoutDialog({
               <Label>Método de Pago</Label>
               <Select value={metodoPago} onValueChange={(v) => setMetodoPago((v ?? "efectivo_usd") as MetodoPago)}>
                 <SelectTrigger className="w-full h-10 text-sm">
-                  <SelectValue />
+                  <SelectValue placeholder="Seleccionar método de pago">
+                    {(() => {
+                      const op = METODOS_PAGO_OPCIONES.find((o) => o.value === metodoPago);
+                      return op ? (
+                        <div className="flex items-center gap-2">
+                          {op.icon}
+                          <span>{op.label}</span>
+                        </div>
+                      ) : (
+                        "Seleccionar método de pago"
+                      );
+                    })()}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent className="w-full">
                   {METODOS_PAGO_OPCIONES.map((opcion) => (
@@ -300,7 +312,7 @@ export function PosCheckoutDialog({
               </Button>
               <Button type="submit" disabled={loading} className="px-6 font-semibold">
                 {loading && <Loader2 className="mr-2 size-4 animate-spin" />}
-                Confirmar Venta (${totalUsd.toFixed(2)})
+                Confirmar Venta ({formatUSD(totalUsd)})
               </Button>
             </DialogFooter>
           </form>

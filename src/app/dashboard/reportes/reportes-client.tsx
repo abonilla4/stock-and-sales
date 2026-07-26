@@ -29,6 +29,7 @@ import {
 } from "lucide-react";
 import { TarjetaKpiDual } from "@/components/reportes/tarjeta-kpi-dual";
 import { FiltrosFechaReporte } from "@/components/reportes/filtros-fecha-reporte";
+import { formatUSD, formatBs, formatNumero } from "@/lib/formatters";
 import {
   obtenerReporteVentasPeriodo,
   obtenerReporteTopProductos,
@@ -214,10 +215,10 @@ export function ReportesClient({ tasaActiva }: ReportesClientProps) {
                             </TableCell>
                             <TableCell className="text-center font-mono">{item.ventasCount}</TableCell>
                             <TableCell className="text-right font-mono font-bold text-emerald-600 dark:text-emerald-400">
-                              ${item.totalUsd.toFixed(2)}
+                              {formatUSD(item.totalUsd)}
                             </TableCell>
                             <TableCell className="text-right font-mono text-xs text-muted-foreground">
-                              Bs. {item.totalBs.toFixed(2)}
+                              {formatBs(item.totalBs)}
                             </TableCell>
                           </TableRow>
                         ))}
@@ -265,13 +266,13 @@ export function ReportesClient({ tasaActiva }: ReportesClientProps) {
                             <TableCell className="font-mono text-xs">{p.sku}</TableCell>
                             <TableCell className="font-medium">{p.nombre}</TableCell>
                             <TableCell className="text-right font-mono font-bold">
-                              {p.cantidadVendida} <span className="text-xs font-normal text-muted-foreground">{p.unidadMedida}s</span>
+                              {formatNumero(p.cantidadVendida)} <span className="text-xs font-normal text-muted-foreground">{p.unidadMedida}s</span>
                             </TableCell>
                             <TableCell className="text-right font-mono font-bold text-emerald-600 dark:text-emerald-400">
-                              ${p.totalIngresosUsd.toFixed(2)}
+                              {formatUSD(p.totalIngresosUsd)}
                             </TableCell>
                             <TableCell className="text-right font-mono text-xs text-muted-foreground">
-                              Bs. {p.totalIngresosBs.toFixed(2)}
+                              {formatBs(p.totalIngresosBs)}
                             </TableCell>
                           </TableRow>
                         ))}
@@ -307,7 +308,7 @@ export function ReportesClient({ tasaActiva }: ReportesClientProps) {
                 montoUsd={reporteMargen?.gananciaBrutaUsd ?? 0}
                 montoBs={reporteMargen?.gananciaBrutaBs ?? 0}
                 variant="emerald"
-                subtext={`Margen Bruto de Utilidad: ${reporteMargen?.porcentajeMargen ?? 0}%`}
+                subtext={`Margen Bruto de Utilidad: ${formatNumero(reporteMargen?.porcentajeMargen ?? 0)}%`}
               />
             </div>
 
@@ -323,21 +324,21 @@ export function ReportesClient({ tasaActiva }: ReportesClientProps) {
                 <div className="rounded-lg border bg-muted/30 p-4 space-y-3">
                   <div className="flex justify-between items-center text-sm">
                     <span className="text-muted-foreground">Ventas Totales Realizadas (USD):</span>
-                    <span className="font-mono font-bold">${(reporteMargen?.ingresosTotalesUsd ?? 0).toFixed(2)} USD</span>
+                    <span className="font-mono font-bold">{formatUSD(reporteMargen?.ingresosTotalesUsd ?? 0)} USD</span>
                   </div>
                   <div className="flex justify-between items-center text-sm">
                     <span className="text-muted-foreground">Costo Reemplazo de Mercancía (USD):</span>
-                    <span className="font-mono font-semibold text-destructive">-${(reporteMargen?.costoVentasUsd ?? 0).toFixed(2)} USD</span>
+                    <span className="font-mono font-semibold text-destructive">-{formatUSD(reporteMargen?.costoVentasUsd ?? 0)} USD</span>
                   </div>
                   <div className="border-t pt-2 flex justify-between items-center text-base font-bold">
                     <span>Ganancia Neta Estimada (USD):</span>
                     <span className="text-emerald-600 dark:text-emerald-400 font-mono text-xl">
-                      ${(reporteMargen?.gananciaBrutaUsd ?? 0).toFixed(2)} USD
+                      {formatUSD(reporteMargen?.gananciaBrutaUsd ?? 0)} USD
                     </span>
                   </div>
                   <div className="flex justify-between items-center text-xs text-muted-foreground pt-1">
                     <span>Equivalente en Bolívares:</span>
-                    <span className="font-mono">Bs. {(reporteMargen?.gananciaBrutaBs ?? 0).toFixed(2)}</span>
+                    <span className="font-mono">{formatBs(reporteMargen?.gananciaBrutaBs ?? 0)}</span>
                   </div>
                 </div>
               </CardContent>
@@ -396,16 +397,16 @@ export function ReportesClient({ tasaActiva }: ReportesClientProps) {
                         {reporteInventario.porCategoria.map((cat) => (
                           <TableRow key={cat.categoriaId}>
                             <TableCell className="font-semibold">{cat.categoriaNombre}</TableCell>
-                            <TableCell className="text-center font-mono text-xs">{cat.totalProductos}</TableCell>
-                            <TableCell className="text-right font-mono">{cat.stockTotal}</TableCell>
+                            <TableCell className="text-center font-mono text-xs">{formatNumero(cat.totalProductos)}</TableCell>
+                            <TableCell className="text-right font-mono">{formatNumero(cat.stockTotal)}</TableCell>
                             <TableCell className="text-right font-mono text-xs text-muted-foreground">
-                              ${cat.valorCostoUsd.toFixed(2)}
+                              {formatUSD(cat.valorCostoUsd)}
                             </TableCell>
                             <TableCell className="text-right font-mono font-bold text-foreground">
-                              ${cat.valorVentaUsd.toFixed(2)}
+                              {formatUSD(cat.valorVentaUsd)}
                             </TableCell>
                             <TableCell className="text-right font-mono font-bold text-emerald-600 dark:text-emerald-400">
-                              +${cat.gananciaEstimadaUsd.toFixed(2)}
+                              +{formatUSD(cat.gananciaEstimadaUsd)}
                             </TableCell>
                           </TableRow>
                         ))}
@@ -496,10 +497,10 @@ export function ReportesClient({ tasaActiva }: ReportesClientProps) {
                               )}
                             </TableCell>
                             <TableCell className="text-right font-mono font-bold text-amber-600 dark:text-amber-400">
-                              ${c.saldoUsd.toFixed(2)}
+                              {formatUSD(c.saldoUsd)}
                             </TableCell>
                             <TableCell className="text-right font-mono text-xs text-muted-foreground">
-                              Bs. {c.saldoBs.toFixed(2)}
+                              {formatBs(c.saldoBs)}
                             </TableCell>
                             <TableCell>
                               <Badge variant="outline" className="border-amber-300 bg-amber-50 text-amber-700 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-300 text-xs">
