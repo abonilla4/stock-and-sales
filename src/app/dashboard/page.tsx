@@ -10,26 +10,31 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { AlertTriangle, DollarSign } from "lucide-react";
+import {
+  AlertTriangle,
+  DollarSign,
+  TrendingUp,
+  TrendingDown,
+  CreditCard,
+  Banknote,
+  Smartphone,
+  Building2,
+  Receipt,
+  PieChart,
+} from "lucide-react";
 import { obtenerTasaActiva } from "@/app/dashboard/configuracion/tasa-cambio/actions";
 import { TasaAlertaBanner } from "@/components/tasa-alerta-banner";
-
+import { getRangosDiaVenezuela } from "@/lib/utils/dates-vzla";
 import { formatUSD, formatBs, formatNumero } from "@/lib/formatters";
 
-function KpiCard({ label, value }: { label: string; value: number }) {
-  return (
-    <Card>
-      <CardHeader className="pb-2">
-        <p className="font-mono text-[11px] font-medium uppercase tracking-widest text-muted-foreground">
-          {label}
-        </p>
-      </CardHeader>
-      <CardContent>
-        <p className="font-mono text-2xl font-semibold tabular-nums">{value}</p>
-      </CardContent>
-    </Card>
-  );
-}
+const METODO_PAGO_LABELS: Record<string, { label: string; icon: React.ComponentType<{ className?: string }> }> = {
+  efectivo_usd: { label: "Efectivo USD ($)", icon: DollarSign },
+  efectivo_bs: { label: "Efectivo Bs.", icon: Banknote },
+  pago_movil: { label: "Pago Móvil", icon: Smartphone },
+  transferencia: { label: "Transferencia", icon: Building2 },
+  tarjeta: { label: "Tarjeta (Punto)", icon: CreditCard },
+  fiado: { label: "Crédito (Fiado)", icon: Receipt },
+};
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -46,17 +51,16 @@ export default async function DashboardPage() {
     redirect("/login");
   }
 
-  // Fechas para ventas de hoy
-  const hoyInicio = new Date();
-  hoyInicio.setHours(0, 0, 0, 0);
-  const hoyFin = new Date();
-  hoyFin.setHours(23, 59, 59, 999);
+  // Rangos de tiempo en hora de Venezuela (America/Caracas, UTC-4)
+  const hoyRango = getRangosDiaVenezuela(0);
+  const ayerRango = getRangosDiaVenezuela(-1);
 
-  // Fetch summary counts, ventas de hoy, cuentas por cobrar y tasa activa
+  // Consultas paralelas a Supabase
   const [
     { count: totalProductos },
     { count: totalCategorias },
     { data: ventasHoy },
+    { data: ventasAyer },
     { data: clientesDeuda },
     { data: productosStockBajo },
     tasaActivaData,
@@ -65,10 +69,16 @@ export default async function DashboardPage() {
     supabase.from("categorias").select("id", { count: "exact", head: true }),
     supabase
       .from("ventas")
-      .select("total_usd, total_bs")
+      .select("id, total_usd, total_bs, metodo_pago")
       .eq("estado", "completada")
-      .gte("fecha", hoyInicio.toISOString())
-      .lte("fecha", hoyFin.toISOString()),
+      .gte("fecha", hoyRango.inicioUtc)
+      .lte("fecha", hoyRango.finUtc),
+    supabase
+      .from("ventas")
+      .select("total_usd")
+      .eq("estado", "completada")
+      .gte("fecha", ayerRango.inicioUtc)
+      .lte("fecha", ayerRango.finUtc),
     supabase
       .from("clientes")
       .select("saldo_fiado")
@@ -82,18 +92,13 @@ export default async function DashboardPage() {
     obtenerTasaActiva(),
   ]);
 
-  // Filter stock bajo client-side
-  const stockBajo =
-    productosStockBajo?.filter((p) => p.stock_actual <= p.stock_minimo) ?? [];
-  const hayAlertas = stockBajo.length > 0;
-
   const tasaActiva = tasaActivaData?.tasa ?? 1;
   const fechaTasa = tasaActivaData?.fecha ?? null;
   const horasTranscurridas = fechaTasa
     ? (new Date().getTime() - new Date(fechaTasa).getTime()) / (1000 * 60 * 60)
     : null;
 
-  // Totales de Hoy
+  // 1. Totales de Ventas de Hoy
   const ventasHoyUsd = Number(
     (ventasHoy ?? []).reduce((acc, v) => acc + (v.total_usd || 0), 0).toFixed(2)
   );
@@ -101,11 +106,64 @@ export default async function DashboardPage() {
     (ventasHoy ?? []).reduce((acc, v) => acc + (v.total_bs || 0), 0).toFixed(2)
   );
 
+  // 2. Comparación contra el día anterior
+  const totalVentasAyerUsd = Number(
+    (ventasAyer ?? []).reduce((acc, v) => acc + (v.total_usd || 0), 0).toFixed(2)
+  );
+  const porcentajeCambioAyer =
+    totalVentasAyerUsd > 0
+      ? ((ventasHoyUsd - totalVentasAyerUsd) / totalVentasAyerUsd) * 100
+      : ventasHoyUsd > 0
+      ? 100
+      : 0;
+
+  // 3. Desglose de Métodos de Pago del Día
+  const desgloseMetodos: Record<string, { totalUsd: number; totalBs: number; cantidad: number }> = {
+    efectivo_usd: { totalUsd: 0, totalBs: 0, cantidad: 0 },
+    efectivo_bs: { totalUsd: 0, totalBs: 0, cantidad: 0 },
+    pago_movil: { totalUsd: 0, totalBs: 0, cantidad: 0 },
+    transferencia: { totalUsd: 0, totalBs: 0, cantidad: 0 },
+    tarjeta: { totalUsd: 0, totalBs: 0, cantidad: 0 },
+    fiado: { totalUsd: 0, totalBs: 0, cantidad: 0 },
+  };
+
+  (ventasHoy ?? []).forEach((v) => {
+    if (desgloseMetodos[v.metodo_pago]) {
+      desgloseMetodos[v.metodo_pago].totalUsd += Number(v.total_usd || 0);
+      desgloseMetodos[v.metodo_pago].totalBs += Number(v.total_bs || 0);
+      desgloseMetodos[v.metodo_pago].cantidad += 1;
+    }
+  });
+
+  // 4. Margen Bruto del Día (usando costo_unitario_usd congelado en detalle_venta)
+  const ventaIdsHoy = (ventasHoy ?? []).map((v) => v.id);
+  let costoTotalVentasHoyUsd = 0;
+
+  if (ventaIdsHoy.length > 0) {
+    const { data: detallesHoy } = await supabase
+      .from("detalle_venta")
+      .select("cantidad, costo_unitario_usd, subtotal_usd")
+      .in("venta_id", ventaIdsHoy);
+
+    (detallesHoy ?? []).forEach((d) => {
+      costoTotalVentasHoyUsd += Number(d.cantidad) * Number(d.costo_unitario_usd || 0);
+    });
+  }
+
+  const gananciaBrutaHoyUsd = Number((ventasHoyUsd - costoTotalVentasHoyUsd).toFixed(2));
+  const porcentajeMargenHoy =
+    ventasHoyUsd > 0 ? Number(((gananciaBrutaHoyUsd / ventasHoyUsd) * 100).toFixed(2)) : 0;
+
   // Cuentas por cobrar acumuladas
   const porCobrarUsd = Number(
     (clientesDeuda ?? []).reduce((acc, c) => acc + (c.saldo_fiado || 0), 0).toFixed(2)
   );
   const porCobrarBs = Number((porCobrarUsd * tasaActiva).toFixed(2));
+
+  // Stock Bajo
+  const stockBajo =
+    productosStockBajo?.filter((p) => p.stock_actual <= p.stock_minimo) ?? [];
+  const hayAlertas = stockBajo.length > 0;
 
   return (
     <div className="space-y-6">
@@ -120,13 +178,13 @@ export default async function DashboardPage() {
       <div>
         <h1 className="text-2xl font-bold tracking-tight font-sans">Dashboard General</h1>
         <p className="text-sm text-muted-foreground">
-          Resumen operativo y métricas en tiempo real.
+          Resumen operativo y métricas en tiempo real (Hora Venezuela UTC-4).
         </p>
       </div>
 
-      {/* Summary cards — Doble moneda dual en ventas hoy y por cobrar */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {/* Ventas de Hoy */}
+      {/* Primary KPI Grid (5 Tarjetas) */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+        {/* 1. Ventas de Hoy (con indicador comparativo vs ayer) */}
         <Card className="border-emerald-300 bg-emerald-50/40 dark:border-emerald-800 dark:bg-emerald-950/20">
           <CardHeader className="pb-2 flex flex-row items-center justify-between">
             <p className="font-mono text-[11px] font-medium uppercase tracking-widest text-muted-foreground">
@@ -141,10 +199,45 @@ export default async function DashboardPage() {
             <p className="mt-1 text-xs text-muted-foreground font-mono">
               {formatBs(ventasHoyBs)} ({ventasHoy?.length ?? 0} ventas)
             </p>
+            {/* Indicador ▲/▼ vs Ayer */}
+            <div className="mt-2 flex items-center gap-1 text-xs font-semibold">
+              {porcentajeCambioAyer >= 0 ? (
+                <span className="flex items-center gap-0.5 text-emerald-700 dark:text-emerald-400">
+                  <TrendingUp className="size-3.5" />
+                  +{porcentajeCambioAyer.toFixed(1)}% vs ayer
+                </span>
+              ) : (
+                <span className="flex items-center gap-0.5 text-rose-600 dark:text-rose-400">
+                  <TrendingDown className="size-3.5" />
+                  {porcentajeCambioAyer.toFixed(1)}% vs ayer
+                </span>
+              )}
+            </div>
           </CardContent>
         </Card>
 
-        {/* Cuentas por cobrar */}
+        {/* 2. Margen Bruto de Hoy */}
+        <Card className={gananciaBrutaHoyUsd >= 0 ? "border-sky-300 bg-sky-50/40 dark:border-sky-800 dark:bg-sky-950/20" : "border-rose-300 bg-rose-50/40 dark:border-rose-800 dark:bg-rose-950/20"}>
+          <CardHeader className="pb-2 flex flex-row items-center justify-between">
+            <p className="font-mono text-[11px] font-medium uppercase tracking-widest text-muted-foreground">
+              Margen Bruto Hoy
+            </p>
+            <PieChart className="size-4 text-sky-600 dark:text-sky-400" />
+          </CardHeader>
+          <CardContent>
+            <p className={`font-mono text-2xl font-extrabold ${gananciaBrutaHoyUsd >= 0 ? "text-sky-700 dark:text-sky-400" : "text-rose-700 dark:text-rose-400"}`}>
+              {formatUSD(gananciaBrutaHoyUsd)} <span className="text-xs font-semibold text-muted-foreground">USD</span>
+            </p>
+            <p className="mt-1 text-xs font-semibold font-mono">
+              Margen: <span className={porcentajeMargenHoy >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"}>{porcentajeMargenHoy.toFixed(1)}%</span>
+            </p>
+            <p className="mt-0.5 text-[10px] text-muted-foreground">
+              Costo congelado: {formatUSD(costoTotalVentasHoyUsd)}
+            </p>
+          </CardContent>
+        </Card>
+
+        {/* 3. Cuentas por cobrar */}
         <Card className={porCobrarUsd > 0 ? "border-amber-300 bg-amber-50/40 dark:border-amber-800 dark:bg-amber-950/20" : ""}>
           <CardHeader className="pb-2 flex flex-row items-center justify-between">
             <p className="font-mono text-[11px] font-medium uppercase tracking-widest text-muted-foreground">
@@ -162,7 +255,7 @@ export default async function DashboardPage() {
           </CardContent>
         </Card>
 
-        {/* Tasa activa */}
+        {/* 4. Tasa activa */}
         <Card className={horasTranscurridas && horasTranscurridas >= 24 ? "border-amber-300 dark:border-amber-800" : ""}>
           <CardHeader className="pb-2 flex flex-row items-center justify-between">
             <p className="font-mono text-[11px] font-medium uppercase tracking-widest text-muted-foreground">
@@ -180,7 +273,7 @@ export default async function DashboardPage() {
           </CardContent>
         </Card>
 
-        {/* Stock Bajo */}
+        {/* 5. Stock Bajo */}
         {hayAlertas ? (
           <Card className="bg-primary text-primary-foreground">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -215,7 +308,53 @@ export default async function DashboardPage() {
         )}
       </div>
 
-      {/* Panel de alertas — siempre visible para que el espacio sea intencional */}
+      {/* Desglose de Métodos de Pago del Día */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base font-semibold flex items-center justify-between">
+            <span>Desglose por Métodos de Pago de Hoy</span>
+            <span className="text-xs font-normal text-muted-foreground font-mono">
+              Total VZLA: {formatUSD(ventasHoyUsd)} / {formatBs(ventasHoyBs)}
+            </span>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {Object.entries(desgloseMetodos).map(([key, data]) => {
+              const info = METODO_PAGO_LABELS[key] || { label: key, icon: DollarSign };
+              const IconComp = info.icon;
+              return (
+                <div
+                  key={key}
+                  className="flex items-center justify-between rounded-md border p-3 bg-card hover:bg-accent/50 transition-colors"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="rounded-full bg-muted p-2 text-foreground">
+                      <IconComp className="size-4" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-medium">{info.label}</p>
+                      <p className="text-[11px] text-muted-foreground font-mono">
+                        {data.cantidad} {data.cantidad === 1 ? "venta" : "ventas"}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-right font-mono">
+                    <p className="text-sm font-semibold text-foreground">
+                      {formatUSD(data.totalUsd)}
+                    </p>
+                    <p className="text-[11px] text-muted-foreground">
+                      {formatBs(data.totalBs)}
+                    </p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Panel de alertas de stock bajo */}
       {hayAlertas ? (
         <Card>
           <CardHeader>

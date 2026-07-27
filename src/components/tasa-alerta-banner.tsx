@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { AlertTriangle, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { formatBs } from "@/lib/formatters";
 
 interface TasaAlertaBannerProps {
   tasaActiva: number | null;
@@ -32,7 +33,7 @@ export function TasaAlertaBanner({
           <p className="text-xs text-amber-800/90 dark:text-amber-300/80">
             {sinTasa
               ? "Para operar en el punto de venta (POS) debes registrar la tasa de cambio en bolívares (Bs / USD)."
-              : `La tasa activa actual (${tasaActiva?.toFixed(2)} Bs/USD) fue registrada hace más de 24 horas (${fechaTasa ? new Date(fechaTasa).toLocaleString("es-VE") : ""}).`}
+              : `La tasa activa actual (${tasaActiva ? formatBs(tasaActiva) : "—"} / USD) fue registrada hace más de 24 horas (${fechaTasa ? new Date(fechaTasa).toLocaleString("es-VE") : ""}).`}
           </p>
         </div>
       </div>
