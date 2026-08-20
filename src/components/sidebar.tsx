@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
+import { NEGOCIO_CONFIG } from "@/lib/config/negocio";
 
 interface NavItem {
   label: string;
@@ -137,12 +138,21 @@ export function Sidebar({
       >
         {/* Header */}
         <div className="flex h-14 items-center justify-between border-b border-sidebar-border px-4">
-          <Link href="/dashboard" className="flex items-center gap-2.5">
-            <div className="flex size-7 items-center justify-center rounded-md bg-primary">
-              <Package className="size-4 text-primary-foreground" />
-            </div>
-            <span className="text-[15px] font-semibold tracking-tight text-sidebar-foreground">
-              Stock & Sales
+          <Link href="/dashboard" className="flex items-center gap-2.5 overflow-hidden">
+            {NEGOCIO_CONFIG.logoUrl ? (
+              /* eslint-disable-next-line @next/next/no-img-element */
+              <img
+                src={NEGOCIO_CONFIG.logoUrl}
+                alt={NEGOCIO_CONFIG.nombre}
+                className="size-7 rounded-md object-contain shrink-0"
+              />
+            ) : (
+              <div className="flex size-7 shrink-0 items-center justify-center rounded-md bg-primary">
+                <Package className="size-4 text-primary-foreground" />
+              </div>
+            )}
+            <span className="truncate text-[15px] font-semibold tracking-tight text-sidebar-foreground">
+              {NEGOCIO_CONFIG.nombre}
             </span>
           </Link>
           <button
@@ -260,8 +270,8 @@ export function Sidebar({
 
         {/* Footer */}
         <div className="border-t border-sidebar-border px-4 py-3">
-          <p className="font-mono text-[10px] uppercase tracking-widest text-sidebar-foreground/40">
-            Stock & Sales — v1.0
+          <p className="font-mono text-[10px] uppercase tracking-widest text-sidebar-foreground/40 truncate">
+            {NEGOCIO_CONFIG.nombre} — {NEGOCIO_CONFIG.sistemaVersion}
           </p>
         </div>
       </aside>

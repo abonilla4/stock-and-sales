@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Eye, EyeOff, Lock, Mail } from "lucide-react";
+import { Eye, EyeOff, Lock, Mail, Package } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/card";
 import { loginAction } from "./actions";
 import { createClient } from "@/lib/supabase/client";
+import { NEGOCIO_CONFIG } from "@/lib/config/negocio";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -61,13 +62,29 @@ export default function LoginPage() {
   return (
     <div className="flex min-h-screen flex-1 items-center justify-center bg-muted/40 px-4">
       <Card className="w-full max-w-sm border-border shadow-lg">
-        <CardHeader className="text-center space-y-1">
-          <CardTitle className="text-2xl font-bold tracking-tight">
-            Stock & Sales
-          </CardTitle>
-          <CardDescription>
-            Ingresa con tu cuenta para continuar
-          </CardDescription>
+        <CardHeader className="text-center space-y-2">
+          <div className="flex justify-center">
+            {NEGOCIO_CONFIG.logoUrl ? (
+              /* eslint-disable-next-line @next/next/no-img-element */
+              <img
+                src={NEGOCIO_CONFIG.logoUrl}
+                alt={NEGOCIO_CONFIG.nombre}
+                className="h-12 max-w-[180px] object-contain"
+              />
+            ) : (
+              <div className="flex size-11 items-center justify-center rounded-xl bg-primary shadow-sm">
+                <Package className="size-6 text-primary-foreground" />
+              </div>
+            )}
+          </div>
+          <div className="space-y-1">
+            <CardTitle className="text-2xl font-bold tracking-tight">
+              {NEGOCIO_CONFIG.nombre}
+            </CardTitle>
+            <CardDescription>
+              {NEGOCIO_CONFIG.subtitulo || "Ingresa con tu cuenta para continuar"}
+            </CardDescription>
+          </div>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleLogin} className="flex flex-col gap-4">

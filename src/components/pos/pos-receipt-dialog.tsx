@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { CheckCircle2, Printer, ArrowRight, DollarSign } from "lucide-react";
 import type { MetodoPago } from "@/lib/types/database";
+import { NEGOCIO_CONFIG } from "@/lib/config/negocio";
 
 export interface ReciboVentaData {
   venta_id: string;
@@ -92,9 +93,40 @@ export function PosReceiptDialog({
         {/* Formato de Recibo Imprimible */}
         <div id="recibo-print" className="space-y-4 rounded-lg border bg-card p-4 text-xs font-mono">
           <div className="text-center space-y-1">
-            <h3 className="font-sans font-bold text-sm text-foreground">FERRETERÍA STOCK & SALES</h3>
-            <p className="text-muted-foreground text-[11px]">Sistema de Control de Inventario y Ventas</p>
-            <p className="text-muted-foreground text-[10px]">
+            {NEGOCIO_CONFIG.logoUrl && (
+              <div className="flex justify-center mb-1">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={NEGOCIO_CONFIG.logoUrl}
+                  alt={NEGOCIO_CONFIG.nombre}
+                  className="h-10 max-w-[140px] object-contain"
+                />
+              </div>
+            )}
+            <h3 className="font-sans font-bold text-sm text-foreground uppercase tracking-tight">
+              {NEGOCIO_CONFIG.nombre}
+            </h3>
+            {NEGOCIO_CONFIG.rif && (
+              <p className="text-muted-foreground text-[11px] font-mono">
+                RIF: {NEGOCIO_CONFIG.rif}
+              </p>
+            )}
+            {NEGOCIO_CONFIG.subtitulo && (
+              <p className="text-muted-foreground text-[11px]">
+                {NEGOCIO_CONFIG.subtitulo}
+              </p>
+            )}
+            {NEGOCIO_CONFIG.direccion && (
+              <p className="text-muted-foreground text-[10px]">
+                {NEGOCIO_CONFIG.direccion}
+              </p>
+            )}
+            {NEGOCIO_CONFIG.telefono && (
+              <p className="text-muted-foreground text-[10px]">
+                Tel: {NEGOCIO_CONFIG.telefono}
+              </p>
+            )}
+            <p className="text-muted-foreground text-[10px] pt-0.5">
               {new Date(recibo.fecha).toLocaleString("es-VE", {
                 dateStyle: "medium",
                 timeStyle: "medium",

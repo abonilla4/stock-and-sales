@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { IBM_Plex_Sans, IBM_Plex_Mono } from "next/font/google";
 import { Toaster } from "@/components/ui/sonner";
 import { ServiceWorkerRegister } from "@/components/sw-register";
+import { NEGOCIO_CONFIG } from "@/lib/config/negocio";
 import "./globals.css";
 
 const plexSans = IBM_Plex_Sans({
@@ -17,9 +18,8 @@ const plexMono = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Stock & Sales — Sistema de Inventario y Ventas",
-  description:
-    "Sistema de gestión de inventario y control de ventas para ferretería. Moneda dual USD/Bs, punto de venta rápido, control de crédito.",
+  title: `${NEGOCIO_CONFIG.nombre} — Sistema de Inventario y Ventas`,
+  description: `Sistema de gestión de inventario y control de ventas para ${NEGOCIO_CONFIG.nombre}. Moneda dual USD/Bs, punto de venta rápido, control de crédito.`,
   manifest: "/manifest.json",
 };
 
