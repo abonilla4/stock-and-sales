@@ -51,3 +51,14 @@ Antes de cualquier tarea nueva, si no la has leído en esta sesión, lee:
 - Al cerrar una fase, verifícala contra su "DoD" en 06-Plan-Implementacion.md.
 - Si algo en el código ya construido no coincide con estas reglas, dímelo
   explícitamente en vez de corregirlo en silencio.
+
+  ## Estrategia de ramas (clientes reales en producción)
+- NUNCA hagas commit ni push directo a la rama main.
+- Todo cambio se desarrolla en la rama develop (o una rama de feature
+  creada desde develop).
+- Después de cada cambio, dame la URL del Preview Deployment de Vercel
+  para que la revise antes de aprobar el merge.
+- Solo mergeas develop → main cuando yo te lo confirme explícitamente.
+- El merge a main dispara el deploy de producción para TODOS los
+  clientes simultáneamente — trátalo como una acción irreversible que
+  afecta negocios reales, no como un paso más del flujo.
