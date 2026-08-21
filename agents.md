@@ -52,7 +52,7 @@ Antes de cualquier tarea nueva, si no la has leído en esta sesión, lee:
 - Si algo en el código ya construido no coincide con estas reglas, dímelo
   explícitamente en vez de corregirlo en silencio.
 
-  ## Estrategia de ramas (clientes reales en producción)
+## Estrategia de ramas (clientes reales en producción)
 - NUNCA hagas commit ni push directo a la rama main.
 - Todo cambio se desarrolla en la rama develop (o una rama de feature
   creada desde develop).
@@ -62,3 +62,11 @@ Antes de cualquier tarea nueva, si no la has leído en esta sesión, lee:
 - El merge a main dispara el deploy de producción para TODOS los
   clientes simultáneamente — trátalo como una acción irreversible que
   afecta negocios reales, no como un paso más del flujo.
+
+## Infraestructura de terceros (Vercel, Supabase)
+Nunca modifiques configuración de seguridad, protección de acceso, o
+cualquier ajuste de infraestructura en Vercel o Supabase para sortear
+un bloqueo que encuentres durante una verificación automatizada. Si un
+script o herramienta choca con una protección de acceso, detente y
+consulta antes de continuar — no cambies la protección para que el
+script pase.
