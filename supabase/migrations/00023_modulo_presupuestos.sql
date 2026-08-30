@@ -196,7 +196,26 @@ DECLARE
   v_estado_presupuesto    public.estado_presupuesto;
   v_folio_presupuesto     text;
 BEGIN
-  -- 0. Validar presupuesto si viene suministrado (bloqueo FOR UPDATE y verificación de estado)
+  -- 0. Idempotencia por client_tx_id (debe evaluarse primero para retornar el recibo existente en reintentos de red)
+  IF p_client_tx_id IS NOT NULL THEN
+    SELECT jsonb_build_object(
+             'venta_id', v.id,
+             'fecha', v.fecha,
+             'total_usd', v.total_usd,
+             'total_bs', v.total_bs,
+             'tasa_cambio_aplicada', v.tasa_cambio_aplicada,
+             'duplicado', true
+           )
+      INTO v_existing
+      FROM public.ventas v
+     WHERE v.client_tx_id = p_client_tx_id;
+
+    IF v_existing IS NOT NULL THEN
+      RETURN v_existing;
+    END IF;
+  END IF;
+
+  -- 1. Validar presupuesto si viene suministrado (bloqueo FOR UPDATE y verificación de estado)
   IF p_presupuesto_id IS NOT NULL THEN
     SELECT estado, folio
       INTO v_estado_presupuesto, v_folio_presupuesto
@@ -214,25 +233,6 @@ BEGIN
       RAISE EXCEPTION 'No se puede convertir un presupuesto cancelado (Folio %).', v_folio_presupuesto;
     ELSIF v_estado_presupuesto <> 'vigente' THEN
       RAISE EXCEPTION 'El presupuesto % no se encuentra en estado vigente (Estado actual: %).', v_folio_presupuesto, v_estado_presupuesto;
-    END IF;
-  END IF;
-
-  -- 1. Idempotencia por client_tx_id
-  IF p_client_tx_id IS NOT NULL THEN
-    SELECT jsonb_build_object(
-             'venta_id', v.id,
-             'fecha', v.fecha,
-             'total_usd', v.total_usd,
-             'total_bs', v.total_bs,
-             'tasa_cambio_aplicada', v.tasa_cambio_aplicada,
-             'duplicado', true
-           )
-      INTO v_existing
-      FROM public.ventas v
-     WHERE v.client_tx_id = p_client_tx_id;
-
-    IF v_existing IS NOT NULL THEN
-      RETURN v_existing;
     END IF;
   END IF;
 
