@@ -1,0 +1,22 @@
+#!/bin/sh
+#
+# pre-commit — Stock&Sales
+#
+# Bloquea commits hechos estando parado en main. El trabajo va en develop o en
+# una rama de feature; main solo recibe merges via Pull Request.
+#
+# Escape deliberado:  git commit --no-verify
+
+PROTECTED="main"
+
+branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null)
+
+if [ "$branch" = "$PROTECTED" ]; then
+  echo "" >&2
+  echo "  BLOQUEADO: estas parado en '$PROTECTED'." >&2
+  echo "  Cambia a develop:  git switch develop" >&2
+  echo "" >&2
+  exit 1
+fi
+
+exit 0

@@ -1,0 +1,32 @@
+#!/bin/sh
+#
+# pre-push — Stock&Sales
+#
+# Bloquea todo push cuyo destino sea la rama main, sin importar quien lo lance:
+# tu, Claude Code, Antigravity, o un script. Git para Windows ejecuta este hook
+# con su bash embebido, asi que funciona igual en Windows, macOS y Linux.
+#
+# Activacion (una sola vez por clon):
+#   git config core.hooksPath .githooks
+#
+# Escape deliberado, solo para el merge autorizado:
+#   git push --no-verify
+
+PROTECTED="refs/heads/main"
+
+while read -r local_ref local_sha remote_ref remote_sha; do
+  if [ "$remote_ref" = "$PROTECTED" ]; then
+    echo "" >&2
+    echo "  BLOQUEADO: push directo a main." >&2
+    echo "" >&2
+    echo "  El merge a main despliega a produccion para TODOS los clientes" >&2
+    echo "  (Repuestos Tokyo, Refrigeracion Yireh) simultaneamente." >&2
+    echo "  Usa un Pull Request desde develop." >&2
+    echo "" >&2
+    echo "  Si este es el merge autorizado: git push --no-verify" >&2
+    echo "" >&2
+    exit 1
+  fi
+done
+
+exit 0
