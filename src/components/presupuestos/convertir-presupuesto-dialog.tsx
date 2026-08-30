@@ -61,6 +61,7 @@ export function ConvertirPresupuestoDialog({
   const [adminAuthOpen, setAdminAuthOpen] = useState(false);
   const [adminAuthMotivo, setAdminAuthMotivo] = useState("");
   const [permiteStockNegativo, setPermiteStockNegativo] = useState(false);
+  const [clientTxId] = useState<string>(() => crypto.randomUUID());
 
   if (!presupuesto) return null;
 
@@ -106,6 +107,7 @@ export function ConvertirPresupuestoDialog({
         autorizado_por: autorizadoPorAdminId ?? null,
         origen_autorizacion: autorizadoPorAdminId ? "admin_online" : null,
         presupuesto_id: presupuesto.id,
+        client_tx_id: clientTxId,
       });
 
       if (res.error) {
