@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import type { UnidadMedida, TipoMovimiento } from "@/lib/types/database";
 import {
   crearProductoSchema,
+  actualizarProductoSchema,
   registrarMovimientoSchema,
   getZodErrorMessage,
 } from "@/lib/schemas/actions-schemas";
@@ -108,22 +109,38 @@ export async function crearProducto(formData: FormData) {
 }
 
 export async function actualizarProducto(id: string, formData: FormData) {
-  const supabase = await createClient();
+  const rawData = {
+    nombre: formData.get("nombre") as string,
+    sku: formData.get("sku") as string,
+    codigo_barras: (formData.get("codigo_barras") as string) || null,
+    descripcion: (formData.get("descripcion") as string) || null,
+    categoria_id: formData.get("categoria_id") as string,
+    proveedor_id: (formData.get("proveedor_id") as string) || null,
+    unidad_medida: formData.get("unidad_medida") as UnidadMedida,
+    precio_costo_usd: parseFloat(formData.get("precio_costo_usd") as string),
+    precio_venta_usd: parseFloat(formData.get("precio_venta_usd") as string),
+    stock_minimo: parseFloat(formData.get("stock_minimo") as string),
+  };
 
-  const nombre = formData.get("nombre") as string;
-  const sku = formData.get("sku") as string;
-  const codigo_barras = (formData.get("codigo_barras") as string) || null;
-  const descripcion = (formData.get("descripcion") as string) || null;
-  const categoria_id = formData.get("categoria_id") as string;
-  const proveedor_id = (formData.get("proveedor_id") as string) || null;
-  const unidad_medida = formData.get("unidad_medida") as UnidadMedida;
-  const precio_costo_usd = parseFloat(formData.get("precio_costo_usd") as string);
-  const precio_venta_usd = parseFloat(formData.get("precio_venta_usd") as string);
-  const stock_minimo = parseFloat(formData.get("stock_minimo") as string);
-
-  if (!nombre || !sku || !categoria_id || !unidad_medida) {
-    return { error: "Campos obligatorios faltantes." };
+  const parseResult = actualizarProductoSchema.safeParse(rawData);
+  if (!parseResult.success) {
+    return { error: getZodErrorMessage(parseResult.error) };
   }
+
+  const {
+    nombre,
+    sku,
+    codigo_barras,
+    descripcion,
+    categoria_id,
+    proveedor_id,
+    unidad_medida,
+    precio_costo_usd,
+    precio_venta_usd,
+    stock_minimo,
+  } = parseResult.data;
+
+  const supabase = await createClient();
 
   // Verificar SKU único (excluyendo el producto actual)
   const { data: existingSku } = await supabase

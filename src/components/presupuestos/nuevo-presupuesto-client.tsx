@@ -29,6 +29,7 @@ import { Separator } from "@/components/ui/separator";
 import type { Producto, Cliente, MonedaPresupuesto } from "@/lib/types/database";
 import { crearPresupuesto } from "@/app/dashboard/presupuestos/actions";
 import { ClienteFormDialog } from "@/components/clientes/cliente-form-dialog";
+import { esUnidadEntera, getStepPorUnidad } from "@/lib/precision";
 import { toast } from "sonner";
 
 interface NuevoPresupuestoClientProps {
@@ -366,12 +367,13 @@ export function NuevoPresupuestoClient({
                         </Button>
                         <Input
                           type="number"
-                          min="1"
+                          min={esUnidadEntera(item.producto.unidad_medida) ? "1" : "0.01"}
+                          step={getStepPorUnidad(item.producto.unidad_medida)}
                           value={item.cantidad}
                           onChange={(e) =>
                             establecerCantidad(
                               item.producto.id,
-                              parseFloat(e.target.value) || 1
+                              parseFloat(e.target.value) || 0
                             )
                           }
                           className="h-6 w-12 text-center text-xs p-1 font-mono"

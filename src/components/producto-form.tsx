@@ -22,6 +22,7 @@ import type {
   UnidadMedida,
 } from "@/lib/types/database";
 import { crearProducto, actualizarProducto, generarSku } from "@/app/dashboard/inventario/actions";
+import { esUnidadEntera, getStepPorUnidad } from "@/lib/precision";
 
 import { formatUSD, formatNumero } from "@/lib/formatters";
 
@@ -52,6 +53,9 @@ export function ProductoForm({
   const [sku, setSku] = useState(producto?.sku ?? "");
   const [nombre, setNombre] = useState(producto?.nombre ?? "");
   const [descripcion, setDescripcion] = useState(producto?.descripcion ?? "");
+  const [unidadMedida, setUnidadMedida] = useState<UnidadMedida>(
+    producto?.unidad_medida ?? "unidad"
+  );
   const [selectedCategoria, setSelectedCategoria] = useState(
     producto?.categoria_id ?? ""
   );
@@ -102,12 +106,29 @@ export function ProductoForm({
   async function handleSubmit(formData: FormData) {
     setLoading(true);
     try {
-      // Ensure the SKU from state is used (it may have been auto-generated)
+      // Ensure the SKU and controlled fields are used
       formData.set("sku", sku);
       formData.set("categoria_id", selectedCategoria);
       formData.set("proveedor_id", selectedProveedor);
+      formData.set("unidad_medida", unidadMedida);
       formData.set("precio_costo_usd", precioCosto);
       formData.set("precio_venta_usd", precioVenta);
+
+      // Validación reactiva de unidades enteras
+      if (esUnidadEntera(unidadMedida)) {
+        const stockActVal = parseFloat(formData.get("stock_actual") as string);
+        const stockMinVal = parseFloat(formData.get("stock_minimo") as string);
+        if (mode === "crear" && !isNaN(stockActVal) && !Number.isInteger(stockActVal)) {
+          toast.error("Para la unidad seleccionada, el stock inicial debe ser un número entero (sin decimales).");
+          setLoading(false);
+          return;
+        }
+        if (!isNaN(stockMinVal) && !Number.isInteger(stockMinVal)) {
+          toast.error("Para la unidad seleccionada, el stock mínimo debe ser un número entero (sin decimales).");
+          setLoading(false);
+          return;
+        }
+      }
 
       let result;
       if (mode === "crear") {
@@ -272,7 +293,8 @@ export function ProductoForm({
             </Label>
             <Select
               name="unidad_medida"
-              defaultValue={producto?.unidad_medida ?? "unidad"}
+              value={unidadMedida}
+              onValueChange={(v) => setUnidadMedida(v as UnidadMedida)}
               required
             >
               <SelectTrigger>
@@ -380,7 +402,7 @@ export function ProductoForm({
                 id="stock_actual"
                 name="stock_actual"
                 type="number"
-                step="0.01"
+                step={getStepPorUnidad(unidadMedida)}
                 min="0"
                 placeholder="0"
                 defaultValue={0}
@@ -400,7 +422,7 @@ export function ProductoForm({
               id="stock_minimo"
               name="stock_minimo"
               type="number"
-              step="0.01"
+              step={getStepPorUnidad(unidadMedida)}
               min="0"
               placeholder="0"
               defaultValue={producto?.stock_minimo ?? 0}

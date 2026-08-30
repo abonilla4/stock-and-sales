@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { esUnidadEntera } from "@/lib/precision";
 
 export function getZodErrorMessage(error: z.ZodError): string {
   return error.issues[0]?.message || "Datos de formulario inválidos.";
@@ -49,7 +50,7 @@ export const crearPresupuestoSchema = z.object({
   items: z.array(itemPresupuestoSchema).min(1, "El presupuesto debe incluir al menos un producto"),
 });
 
-// 2. Schema para Crear/Editar Producto (crearProducto)
+// 2. Schema para Crear Producto (crearProducto)
 export const crearProductoSchema = z.object({
   sku: z.string().trim().min(1, "El SKU es obligatorio"),
   codigo_barras: z.string().trim().nullable().optional(),
@@ -65,6 +66,49 @@ export const crearProductoSchema = z.object({
   stock_actual: z.number().default(0),
   stock_minimo: z.number().min(0, "El stock mínimo no puede ser negativo").default(5),
   activo: z.boolean().default(true),
+}).superRefine((data, ctx) => {
+  if (esUnidadEntera(data.unidad_medida)) {
+    if (!Number.isInteger(data.stock_actual)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Para la unidad de medida seleccionada, el stock inicial debe ser un número entero (sin decimales).",
+        path: ["stock_actual"],
+      });
+    }
+    if (!Number.isInteger(data.stock_minimo)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Para la unidad de medida seleccionada, el stock mínimo debe ser un número entero (sin decimales).",
+        path: ["stock_minimo"],
+      });
+    }
+  }
+});
+
+// 2.1 Schema para Actualizar Producto (actualizarProducto)
+export const actualizarProductoSchema = z.object({
+  sku: z.string().trim().min(1, "El SKU es obligatorio"),
+  codigo_barras: z.string().trim().nullable().optional(),
+  nombre: z.string().trim().min(1, "El nombre del producto es obligatorio"),
+  descripcion: z.string().trim().nullable().optional(),
+  categoria_id: z.string().uuid("Categoría seleccionada inválida"),
+  proveedor_id: z.string().uuid("Proveedor seleccionado inválido").nullable().optional(),
+  unidad_medida: z.enum(["unidad", "caja", "metro", "kilo", "litro", "par"], {
+    message: "Unidad de medida inválida",
+  }),
+  precio_costo_usd: z.number().min(0, "El precio de costo debe ser mayor o igual a $0.00"),
+  precio_venta_usd: z.number().min(0, "El precio de venta debe ser mayor o igual a $0.00"),
+  stock_minimo: z.number().min(0, "El stock mínimo no puede ser negativo").default(5),
+}).superRefine((data, ctx) => {
+  if (esUnidadEntera(data.unidad_medida)) {
+    if (!Number.isInteger(data.stock_minimo)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Para la unidad de medida seleccionada, el stock mínimo debe ser un número entero (sin decimales).",
+        path: ["stock_minimo"],
+      });
+    }
+  }
 });
 
 // 3. Schema para Movimiento de Inventario (registrarMovimiento)

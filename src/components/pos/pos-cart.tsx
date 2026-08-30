@@ -14,6 +14,7 @@ import type { Cliente } from "@/lib/types/database";
 
 import { useRouter } from "next/navigation";
 import { formatUSD, formatBs, formatNumero } from "@/lib/formatters";
+import { esUnidadEntera, getStepPorUnidad } from "@/lib/precision";
 
 interface PosCartProps {
   clientes: Cliente[];
@@ -137,15 +138,16 @@ export function PosCart({ clientes, isAdmin }: PosCartProps) {
 
                     <Input
                       type="number"
-                      step="0.01"
-                      min="0.01"
+                      step={getStepPorUnidad(item.producto.unidad_medida)}
+                      min={esUnidadEntera(item.producto.unidad_medida) ? "1" : "0.01"}
                       value={item.cantidad}
-                      onChange={(e) =>
+                      onChange={(e) => {
+                        const val = parseFloat(e.target.value) || 0;
                         actualizarCantidad(
                           item.producto.id,
-                          parseFloat(e.target.value) || 0
-                        )
-                      }
+                          val
+                        );
+                      }}
                       className="h-7 w-16 text-center text-xs border-0 focus-visible:ring-0 px-0 font-medium"
                     />
 

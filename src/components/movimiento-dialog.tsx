@@ -26,6 +26,7 @@ import { ArrowDownUp, Loader2, AlertTriangle, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { registrarMovimiento } from "@/app/dashboard/inventario/actions";
 import { crearProveedor } from "@/app/dashboard/configuracion/proveedores/actions";
+import { esUnidadEntera, getStepPorUnidad } from "@/lib/precision";
 
 interface ProveedorSimple {
   id: string;
@@ -120,6 +121,12 @@ export function MovimientoDialog({
   const provNombreActualText = proveedorNombreActual || "otro proveedor";
 
   async function ejecutarSubmit(proveedorIdAEnviar: string | null) {
+    const cantNum = parseFloat(cantidad);
+    if (esUnidadEntera(unidadMedida) && !Number.isInteger(cantNum)) {
+      toast.error(`Para la unidad "${unidadMedida}", la cantidad debe ser un número entero sin decimales.`);
+      return;
+    }
+
     setLoading(true);
     try {
       const formData = new FormData();
@@ -319,8 +326,8 @@ export function MovimientoDialog({
             <Input
               id="mov-cantidad"
               type="number"
-              step="0.01"
-              min="0.01"
+              step={getStepPorUnidad(unidadMedida)}
+              min={esUnidadEntera(unidadMedida) ? "1" : "0.01"}
               placeholder="0"
               value={cantidad}
               onChange={(e) => setCantidad(e.target.value)}
