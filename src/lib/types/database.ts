@@ -131,3 +131,40 @@ export interface PagoFiado {
   notas: string | null;
   created_at: string;
 }
+
+export type MonedaPresupuesto = "usd" | "bs";
+
+export type EstadoPresupuesto = "vigente" | "convertido" | "cancelado";
+
+export interface Presupuesto {
+  id: string;
+  folio: string;
+  cliente_id: string | null;
+  usuario_id: string | null;
+  fecha_creacion: string;
+  fecha_vigencia: string;
+  moneda_mostrada: MonedaPresupuesto;
+  subtotal_usd: number;
+  descuento_usd: number;
+  total_usd: number;
+  tasa_cambio_referencia: number | null;
+  total_bs_referencia: number | null;
+  estado: EstadoPresupuesto;
+  venta_id: string | null;
+  notas: string | null;
+  created_at: string;
+  updated_at: string;
+  cliente?: Cliente | null;
+}
+
+export interface DetallePresupuesto {
+  id: string;
+  presupuesto_id: string;
+  producto_id: string;
+  cantidad: number;
+  precio_unitario_usd_referencia: number;
+  subtotal_usd: number;
+  created_at: string;
+  producto?: Producto;
+}
+

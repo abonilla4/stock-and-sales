@@ -6,6 +6,7 @@ import {
   LayoutDashboard,
   Package,
   ShoppingCart,
+  FileText,
   Users,
   BarChart3,
   Settings,
@@ -36,6 +37,11 @@ const operacionItems: NavItem[] = [
     label: "Punto de Venta",
     href: "/dashboard/pos",
     icon: <ShoppingCart className="size-4" />,
+  },
+  {
+    label: "Presupuestos",
+    href: "/dashboard/presupuestos",
+    icon: <FileText className="size-4" />,
   },
   {
     label: "Inventario",

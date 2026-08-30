@@ -23,12 +23,14 @@ interface ClienteFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   clienteAEditar?: Cliente | null;
+  onClienteCreado?: (clienteId: string) => void;
 }
 
 export function ClienteFormDialog({
   open,
   onOpenChange,
   clienteAEditar,
+  onClienteCreado,
 }: ClienteFormDialogProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
@@ -55,6 +57,9 @@ export function ClienteFormDialog({
           ? "Cliente actualizado correctamente"
           : "Nuevo cliente registrado exitosamente"
       );
+      if (!esEdicion && "clienteId" in res && res.clienteId && onClienteCreado) {
+        onClienteCreado(String(res.clienteId));
+      }
       onOpenChange(false);
       router.refresh();
     } catch {

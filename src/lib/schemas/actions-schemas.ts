@@ -32,6 +32,21 @@ export const confirmarVentaSchema = z.object({
   client_tx_id: z.string().nullable().optional(),
   autorizado_por: z.string().uuid("ID de administrador autorizador inválido").nullable().optional(),
   origen_autorizacion: z.enum(["admin_online", "offline_diferido"]).nullable().optional(),
+  presupuesto_id: z.string().uuid("ID de presupuesto inválido").nullable().optional(),
+});
+
+// 1.1 Schema para Presupuestos (crearPresupuesto)
+export const itemPresupuestoSchema = z.object({
+  producto_id: z.string().uuid("ID de producto inválido"),
+  cantidad: z.number().positive("La cantidad debe ser mayor a 0"),
+});
+
+export const crearPresupuestoSchema = z.object({
+  cliente_id: z.string().uuid("ID de cliente inválido").nullable().optional(),
+  descuento_usd: z.number().min(0, "El descuento no puede ser negativo").default(0),
+  moneda_mostrada: z.enum(["usd", "bs"], { message: "Moneda inválida" }).default("usd"),
+  notas: z.string().trim().nullable().optional(),
+  items: z.array(itemPresupuestoSchema).min(1, "El presupuesto debe incluir al menos un producto"),
 });
 
 // 2. Schema para Crear/Editar Producto (crearProducto)

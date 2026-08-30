@@ -20,12 +20,14 @@ interface AdminAuthDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onAutorizado: (adminUserId: string) => void;
+  motivo?: string;
 }
 
 export function AdminAuthDialog({
   open,
   onOpenChange,
   onAutorizado,
+  motivo,
 }: AdminAuthDialogProps) {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -70,7 +72,7 @@ export function AdminAuthDialog({
           </div>
           <DialogTitle className="text-center">Autorización de Administrador</DialogTitle>
           <DialogDescription className="text-center text-xs">
-            Esta venta contiene uno o más productos con stock insuficiente. Ingresa la contraseña de un Administrador para autorizar el descuento y permitir stock negativo auditado.
+            {motivo ?? "Esta venta contiene excepciones (descuento superior al 5% o stock insuficiente). Ingresa la contraseña de un Administrador para autorizar la operación."}
           </DialogDescription>
         </DialogHeader>
 

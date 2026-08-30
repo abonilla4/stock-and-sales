@@ -72,6 +72,7 @@ export interface ConfirmarVentaParams {
   client_tx_id?: string | null;
   autorizado_por?: string | null;
   origen_autorizacion?: "admin_online" | "offline_diferido" | null;
+  presupuesto_id?: string | null;
 }
 
 import { confirmarVentaSchema, getZodErrorMessage } from "@/lib/schemas/actions-schemas";
@@ -80,7 +81,8 @@ import { confirmarVentaSchema, getZodErrorMessage } from "@/lib/schemas/actions-
  * Confirmar una venta llamando a la RPC atómica `procesar_venta_transaccion`.
  *
  * La RPC maneja atómicamente: inserción de venta, detalle, descuento de stock,
- * movimientos de inventario, y actualización de saldo_fiado (si es fiado).
+ * movimientos de inventario, actualización de saldo_fiado (si es fiado)
+ * y marcado de presupuesto a 'convertido' (si proviene de cotización).
  *
  * NO hay fallback: si la RPC falla, se retorna el error directamente.
  */
@@ -115,7 +117,7 @@ export async function confirmarVentaPOS(params: ConfirmarVentaParams) {
     }
   }
 
-  // Llamar a la función RPC atómica (única vía de modificación de stock/saldo)
+  // Llamar a la función RPC atómica (única vía de modificación de stock/saldo/conversión)
   const { data: rpcData, error: rpcError } = await supabase.rpc("procesar_venta_transaccion", {
     p_cliente_id: params.cliente_id,
     p_subtotal_usd: params.subtotal_usd,
@@ -129,6 +131,7 @@ export async function confirmarVentaPOS(params: ConfirmarVentaParams) {
     p_client_tx_id: params.client_tx_id ?? null,
     p_autorizado_por: autorizadoPor,
     p_origen_autorizacion: origenAutorizacion,
+    p_presupuesto_id: params.presupuesto_id ?? null,
   });
 
   if (rpcError) {
