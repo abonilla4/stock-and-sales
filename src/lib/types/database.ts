@@ -22,7 +22,19 @@ export type EstadoVenta = "completada" | "anulada";
 
 export type FuenteTasa = "manual" | "api";
 
-export type RolUsuario = "admin" | "cajero";
+/**
+ * Cómo se autorizó una venta de excepción.
+ * `offline_diferido` deja `autorizado_por` en NULL: no había administrador en
+ * el momento, por eso esas ventas requieren revisión a posteriori.
+ */
+export type OrigenAutorizacion = "admin_online" | "offline_diferido";
+
+/** Dictamen de la revisión de una venta autorizada offline (migración 00029). */
+export type ResultadoRevision = "confirmada" | "irregular";
+
+// Orden del enum en BD (mayor a menor privilegio): desarrollador < admin < cajero.
+// 'desarrollador' se agregó en la migración 00025 y solo se asigna por SQL manual.
+export type RolUsuario = "desarrollador" | "admin" | "cajero";
 
 // ---- Tablas ----
 
@@ -99,6 +111,12 @@ export interface Venta {
   estado: EstadoVenta;
   sincronizado: boolean;
   created_at: string;
+  // Trazabilidad de autorización de excepciones (migraciones 00010, 00011, 00016).
+  client_tx_id: string | null;
+  autorizado_por: string | null;
+  autorizado_en: string | null;
+  origen_autorizacion: OrigenAutorizacion | null;
+  motivos_autorizacion: string[] | null;
 }
 
 export interface DetalleVenta {
@@ -166,5 +184,57 @@ export interface DetallePresupuesto {
   subtotal_usd: number;
   created_at: string;
   producto?: Producto;
+}
+
+// ---- Permisos y auditoría (migraciones 00026-00028) ----
+
+/**
+ * Catálogo fijo de permisos. Solo cambia por migración, nunca desde la app.
+ * `es_critico` indica que la RPC asignar_permiso restringe a qué roles puede
+ * otorgarse; el kernel de esa RPC es la autoridad, no este campo.
+ */
+export interface Permiso {
+  codigo: string;
+  descripcion: string;
+  grupo: string;
+  es_critico: boolean;
+  orden: number;
+}
+
+/** Permisos efectivos por rol. Solo modificable vía RPC asignar_permiso. */
+export interface RolPermiso {
+  rol: RolUsuario;
+  permiso_codigo: string;
+  created_at: string;
+}
+
+/**
+ * Registro de auditoría del servidor (tabla `registro_auditoria`).
+ * No confundir con el log local de Dexie en `lib/offline/db.ts`, que tiene
+ * otra forma y solo vive en el navegador.
+ */
+export interface RegistroAuditoria {
+  id: string;
+  usuario_id: string | null;
+  email: string | null;
+  accion: string;
+  exito: boolean;
+  detalle: string | null;
+  created_at: string;
+}
+
+/**
+ * Revisión a posteriori de una venta autorizada offline (migración 00029).
+ * Vive aparte de `ventas` a propósito: la venta es un snapshot inmutable y la
+ * revisión es un hecho posterior sobre ella, no una corrección.
+ * Solo se escribe vía RPC `revisar_autorizacion_offline`.
+ */
+export interface RevisionAutorizacion {
+  id: string;
+  venta_id: string;
+  revisado_por: string;
+  resultado: ResultadoRevision;
+  notas: string | null;
+  created_at: string;
 }
 

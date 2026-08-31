@@ -172,3 +172,29 @@ export const loginSchema = z.object({
   email: z.string().trim().email("Ingresa un correo electrónico válido"),
   password: z.string().min(1, "La contraseña es obligatoria"),
 });
+
+// 8. Schema para configurar permisos por rol (configurarPermiso)
+// Nota: valida la FORMA del payload, no la autorización. Quién puede otorgar
+// qué permiso a qué rol lo decide el kernel de la RPC asignar_permiso
+// (migración 00028), que rechaza aunque la petición se manipule.
+export const configurarPermisoSchema = z.object({
+  rol: z.enum(["desarrollador", "admin", "cajero"], {
+    message: "Rol inválido",
+  }),
+  permiso_codigo: z
+    .string()
+    .trim()
+    .min(1, "El código de permiso es obligatorio"),
+  activo: z.boolean(),
+});
+
+// 9. Schema para revisar una autorización offline (revisarAutorizacionOffline)
+// La autorización la valida la RPC revisar_autorizacion_offline vía
+// tiene_permiso('ventas.autorizar_stock_negativo'); esto solo valida la forma.
+export const revisarAutorizacionOfflineSchema = z.object({
+  venta_id: z.string().uuid("ID de venta inválido"),
+  resultado: z.enum(["confirmada", "irregular"], {
+    message: "El resultado debe ser 'confirmada' o 'irregular'",
+  }),
+  notas: z.string().trim().max(1000, "Las notas no pueden exceder 1000 caracteres").nullable().optional(),
+});
