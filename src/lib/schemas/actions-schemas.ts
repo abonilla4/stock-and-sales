@@ -191,10 +191,30 @@ export const configurarPermisoSchema = z.object({
 // 9. Schema para revisar una autorización offline (revisarAutorizacionOffline)
 // La autorización la valida la RPC revisar_autorizacion_offline vía
 // tiene_permiso('ventas.autorizar_stock_negativo'); esto solo valida la forma.
-export const revisarAutorizacionOfflineSchema = z.object({
-  venta_id: z.string().uuid("ID de venta inválido"),
-  resultado: z.enum(["confirmada", "irregular"], {
-    message: "El resultado debe ser 'confirmada' o 'irregular'",
-  }),
-  notas: z.string().trim().max(1000, "Las notas no pueden exceder 1000 caracteres").nullable().optional(),
-});
+//
+// La exigencia de notas para 'irregular' refleja el CHECK
+// notas_requeridas_si_irregular (migración 00030). Se valida aquí para que el
+// usuario reciba un mensaje en el formulario y no un error crudo de constraint.
+// La base sigue siendo la autoridad: esto es conveniencia, no la garantía.
+
+/** Compartido entre el schema y el formulario para que no se desincronicen. */
+export const MENSAJE_NOTAS_IRREGULAR =
+  "Marcar una venta como irregular exige explicar por qué: las notas son obligatorias.";
+
+export const revisarAutorizacionOfflineSchema = z
+  .object({
+    venta_id: z.string().uuid("ID de venta inválido"),
+    resultado: z.enum(["confirmada", "irregular"], {
+      message: "El resultado debe ser 'confirmada' o 'irregular'",
+    }),
+    notas: z.string().trim().max(1000, "Las notas no pueden exceder 1000 caracteres").nullable().optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.resultado === "irregular" && !data.notas) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["notas"],
+        message: MENSAJE_NOTAS_IRREGULAR,
+      });
+    }
+  });

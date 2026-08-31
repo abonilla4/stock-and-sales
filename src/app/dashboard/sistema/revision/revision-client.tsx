@@ -37,6 +37,7 @@ import type {
   ResultadoRevision,
   RevisionAutorizacion,
 } from "@/lib/types/database";
+import { MENSAJE_NOTAS_IRREGULAR } from "@/lib/schemas/actions-schemas";
 import { revisarAutorizacionOffline } from "./actions";
 
 export interface VentaOffline {
@@ -86,16 +87,34 @@ export function RevisionClient({
   );
   const [resultado, setResultado] = useState<ResultadoRevision>("confirmada");
   const [notas, setNotas] = useState("");
+  const [errorNotas, setErrorNotas] = useState<string | null>(null);
   const [guardando, setGuardando] = useState(false);
+
+  const notasObligatorias = resultado === "irregular";
 
   function abrirDialogo(venta: VentaOffline) {
     setVentaEnRevision(venta);
     setResultado("confirmada");
     setNotas("");
+    setErrorNotas(null);
+  }
+
+  function cambiarResultado(siguiente: ResultadoRevision) {
+    setResultado(siguiente);
+    // Volver a "confirmada" deja de exigir notas: el error deja de aplicar.
+    if (siguiente === "confirmada") setErrorNotas(null);
   }
 
   async function confirmar() {
     if (!ventaEnRevision) return;
+
+    // Espeja el CHECK notas_requeridas_si_irregular (migración 00030) para que
+    // el usuario vea el motivo en el formulario en vez de un error de
+    // constraint devuelto por la base.
+    if (notasObligatorias && !notas.trim()) {
+      setErrorNotas(MENSAJE_NOTAS_IRREGULAR);
+      return;
+    }
 
     setGuardando(true);
     try {
@@ -318,7 +337,7 @@ export function RevisionClient({
               <div className="grid gap-2 sm:grid-cols-2">
                 <button
                   type="button"
-                  onClick={() => setResultado("confirmada")}
+                  onClick={() => cambiarResultado("confirmada")}
                   className={`rounded-lg border p-3 text-left transition-colors ${
                     resultado === "confirmada"
                       ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-950/30"
@@ -336,7 +355,7 @@ export function RevisionClient({
 
                 <button
                   type="button"
-                  onClick={() => setResultado("irregular")}
+                  onClick={() => cambiarResultado("irregular")}
                   className={`rounded-lg border p-3 text-left transition-colors ${
                     resultado === "irregular"
                       ? "border-destructive bg-destructive/5"
@@ -357,18 +376,42 @@ export function RevisionClient({
             <div className="space-y-2">
               <Label htmlFor="notas-revision">
                 Notas{" "}
-                <span className="font-normal text-muted-foreground">
-                  (opcional)
+                <span
+                  className={
+                    notasObligatorias
+                      ? "font-normal text-destructive"
+                      : "font-normal text-muted-foreground"
+                  }
+                >
+                  {notasObligatorias ? "(obligatorias)" : "(opcional)"}
                 </span>
               </Label>
               <Textarea
                 id="notas-revision"
                 value={notas}
-                onChange={(e) => setNotas(e.target.value)}
+                onChange={(e) => {
+                  setNotas(e.target.value);
+                  if (errorNotas && e.target.value.trim()) setErrorNotas(null);
+                }}
                 maxLength={1000}
                 rows={3}
-                placeholder="Qué se verificó, con quién se habló, qué se decidió…"
+                aria-invalid={errorNotas !== null}
+                aria-describedby={errorNotas ? "notas-revision-error" : undefined}
+                className={errorNotas ? "border-destructive" : undefined}
+                placeholder={
+                  notasObligatorias
+                    ? "Qué irregularidad se detectó y qué seguimiento requiere…"
+                    : "Qué se verificó, con quién se habló, qué se decidió…"
+                }
               />
+              {errorNotas && (
+                <p
+                  id="notas-revision-error"
+                  className="text-xs font-medium text-destructive"
+                >
+                  {errorNotas}
+                </p>
+              )}
             </div>
           </div>
 
