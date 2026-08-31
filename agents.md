@@ -157,3 +157,25 @@ cambies la protección para que el script pase.
 
 Esto incluye, sin limitarse a: protección SSO de Vercel, políticas de RLS,
 variables de entorno de producción, claves de API y configuración de Auth.
+
+### Ejecución contra Supabase Cloud
+
+- **No ejecutes SQL ni invoques RPCs contra Supabase Cloud por tu cuenta**, ni
+  para escribir ni para leer. Cuando necesites un dato de Cloud para decidir el
+  siguiente paso, o cuando una fase exija evidencia de ejecución, pásame la
+  consulta o la RPC exacta que hay que correr: yo la ejecuto en el SQL Editor y
+  te devuelvo el resultado.
+- La introspección de solo lectura del catálogo —listar tablas, columnas,
+  políticas, migraciones aplicadas, advisories— no cuenta como ejecución de SQL
+  y puedes consultarla libremente. El límite es el dato: en cuanto necesites
+  ejecutar una consulta sobre datos reales de negocio, o cualquier escritura,
+  sin excepción me la pasas primero.
+- Esto **no** relaja la verificación basada en evidencia: un cambio crítico se
+  sigue cerrando con salida real de ejecución, solo que quien la ejecuta soy yo.
+  Dar por bueno un resultado que nadie corrió sigue siendo inaceptable, y
+  predecir la salida de una consulta no es haberla corrido.
+- **Un bloqueo aplica a la acción, no al nombre literal de la herramienta.** Si
+  una acción está vedada por la configuración de permisos, sigue vedada aunque
+  aparezca disponible bajo otro nombre, otro alias, otro servidor o cualquier
+  mecanismo distinto que haga lo mismo. Encontrar una vía alterna no es una
+  autorización: es exactamente el caso en el que debes detenerte y preguntarme.

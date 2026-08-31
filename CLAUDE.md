@@ -250,6 +250,20 @@ Configured in `.claude/settings.json` and `.claude/hooks/guard-git.sh`:
 - ✋ `.agents/Docs/` files read-only
 - ✋ push/merge to main blocked by hook
 
+**A deny applies to the action, not to the literal tool name.** The `execute_sql`
+deny covers running SQL against Supabase Cloud *however the tool is exposed in
+this session* — under a different MCP server name, an alias, a renamed
+equivalent, or any other mechanism that does the same thing. The deny list names
+`mcp__supabase__execute_sql`, but matching some other string is not permission.
+The same holds for every other entry here.
+
+**Never run SQL against Supabase Cloud yourself** — not writes, not reads of
+business data, not "just to verify". Hand the exact query or RPC to the user;
+they run it in the SQL Editor and return the output. Read-only catalog
+introspection (listing tables, columns, applied migrations, policies, advisors)
+is fine and needs no hand-off. See "Ejecución contra Supabase Cloud" in
+@AGENTS.md for the full rule.
+
 **If blocked:** that's the correct answer. Report and wait. No workarounds.
 
 ---
