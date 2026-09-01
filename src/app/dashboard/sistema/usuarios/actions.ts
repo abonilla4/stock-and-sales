@@ -168,9 +168,26 @@ export async function crearUsuario(
       "Error al asignar rol al usuario recién creado:",
       errorRol.message
     );
-    await admin.auth.admin.updateUserById(nuevoUsuarioId, {
-      ban_duration: BAN_INDEFINIDO,
-    });
+    const { error: errorBaneo } = await admin.auth.admin.updateUserById(
+      nuevoUsuarioId,
+      { ban_duration: BAN_INDEFINIDO }
+    );
+
+    if (errorBaneo) {
+      // La compensación falló. Queda una cuenta viva con el rol por defecto,
+      // hoy 'admin'. No se puede afirmar que se desactivó: hay que decir
+      // exactamente qué pasó para que alguien lo arregle a mano ya.
+      console.error("Falló el baneo compensatorio:", errorBaneo.message);
+      await registrarEnAuditoria(
+        "USUARIO_CREADO",
+        false,
+        `Usuario ${parsed.data.email} creado, sin rol asignado (${errorRol.message}) y NO se pudo desactivar (${errorBaneo.message}). Queda activo con el rol por defecto.`
+      );
+      return {
+        error: `URGENTE: el usuario ${parsed.data.email} se creó, no se le pudo asignar el rol (${errorRol.message}) y tampoco se pudo desactivar (${errorBaneo.message}). La cuenta quedó ACTIVA con el rol por defecto. Desactívala manualmente ahora mismo.`,
+      };
+    }
+
     await registrarEnAuditoria(
       "USUARIO_CREADO",
       false,
