@@ -189,6 +189,15 @@ variables de entorno de producción, claves de API y configuración de Auth.
   el deploy de producción de todos los clientes; cerrarlo descarta trabajo. Las
   dos son decisiones mías, no tuyas, y valen aunque yo te haya pedido "termina
   el PR": terminar significa dejarlo listo para que yo lo revise.
+- **No apruebes ni pidas cambios en un PR.** Una revisión queda asentada como
+  juicio de registro, y que apruebe el mismo que escribió el código vacía de
+  sentido la revisión sobre la que yo decido el merge.
+- **No edites los metadatos de un PR.** Cambiar la rama base retargetea un PR de
+  `develop` a `main`, que es el mismo camino irreversible del punto anterior por
+  otra puerta.
+- **No borres repositorios, no dispares workflows y no publiques releases.** Un
+  workflow puede desplegar; una release es un anuncio público. Ninguna de las
+  tres se deshace.
 - **No invoques la API cruda de GitHub.** Los comandos de alto nivel expresan su
   intención en el nombre y por eso se pueden bloquear con precisión; una llamada
   directa a la API oculta el verbo entre los argumentos y vuelve inútil
