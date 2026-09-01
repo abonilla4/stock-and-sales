@@ -218,3 +218,31 @@ export const revisarAutorizacionOfflineSchema = z
       });
     }
   });
+
+// 10. Schemas para gestión de usuarios (Fase 3)
+// El rol 'desarrollador' NO aparece en ningún enum de asignación: la RPC
+// asignar_permiso lo rechaza (migración 00028) porque ese rol solo se otorga
+// por SQL manual con acceso directo al proyecto. Es el ancla de confianza del
+// modelo y no debe poder crearse desde la aplicación.
+export const ROLES_ASIGNABLES = ["admin", "cajero"] as const;
+
+/** Mínimo de Supabase Auth por defecto. Compartido con el formulario. */
+export const MIN_LONGITUD_PASSWORD = 8;
+
+export const crearUsuarioSchema = z.object({
+  email: z.string().trim().toLowerCase().email("Ingresa un correo electrónico válido"),
+  password: z
+    .string()
+    .min(MIN_LONGITUD_PASSWORD, `La contraseña debe tener al menos ${MIN_LONGITUD_PASSWORD} caracteres`),
+  rol: z.enum(ROLES_ASIGNABLES, { message: "El rol debe ser 'admin' o 'cajero'" }),
+});
+
+export const cambiarRolUsuarioSchema = z.object({
+  usuario_id: z.string().uuid("ID de usuario inválido"),
+  rol: z.enum(ROLES_ASIGNABLES, { message: "El rol debe ser 'admin' o 'cajero'" }),
+});
+
+export const cambiarEstadoUsuarioSchema = z.object({
+  usuario_id: z.string().uuid("ID de usuario inválido"),
+  activo: z.boolean(),
+});
