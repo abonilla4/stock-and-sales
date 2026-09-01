@@ -238,3 +238,18 @@ export interface RevisionAutorizacion {
   created_at: string;
 }
 
+
+/**
+ * Fila devuelta por la RPC listar_usuarios (migración 00031).
+ * No es una tabla: es la proyección estrecha de profiles + auth.users que el
+ * panel necesita. `auth.users` nunca se lee directo desde la aplicación.
+ */
+export interface UsuarioListado {
+  id: string;
+  email: string;
+  role: RolUsuario;
+  created_at: string;
+  last_sign_in_at: string | null;
+  /** Fecha futura = cuenta desactivada. Supabase Auth no tiene flag booleano. */
+  banned_until: string | null;
+}

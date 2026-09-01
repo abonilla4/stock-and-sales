@@ -3,6 +3,7 @@ import {
   ScrollText,
   ShieldCheck,
   ClipboardCheck,
+  Users,
   ChevronRight,
   Settings2,
 } from "lucide-react";
@@ -37,6 +38,13 @@ const SECCIONES = [
     descripcion:
       "Ventas completadas sin conexión que nadie autorizó en el momento.",
     icono: ClipboardCheck,
+  },
+  {
+    href: "/dashboard/sistema/usuarios",
+    permiso: "sistema.gestionar_usuarios",
+    titulo: "Usuarios",
+    descripcion: "Altas, roles y desactivación de cuentas.",
+    icono: Users,
   },
 ];
 
