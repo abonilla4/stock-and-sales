@@ -179,3 +179,19 @@ variables de entorno de producción, claves de API y configuración de Auth.
   aparezca disponible bajo otro nombre, otro alias, otro servidor o cualquier
   mecanismo distinto que haga lo mismo. Encontrar una vía alterna no es una
   autorización: es exactamente el caso en el que debes detenerte y preguntarme.
+
+### Operaciones sobre GitHub
+
+- Puedes leer libremente el estado del repositorio remoto: listar y ver PRs,
+  issues, checks y sus resultados. Es el equivalente a la introspección de
+  catálogo en Supabase.
+- **No cierres ni mergees un Pull Request.** Mergear un PR hacia `main` dispara
+  el deploy de producción de todos los clientes; cerrarlo descarta trabajo. Las
+  dos son decisiones mías, no tuyas, y valen aunque yo te haya pedido "termina
+  el PR": terminar significa dejarlo listo para que yo lo revise.
+- **No invoques la API cruda de GitHub.** Los comandos de alto nivel expresan su
+  intención en el nombre y por eso se pueden bloquear con precisión; una llamada
+  directa a la API oculta el verbo entre los argumentos y vuelve inútil
+  cualquier bloqueo. Si necesitas algo que solo se consigue por la API, pídemelo.
+- Abrir un PR y comentar sí puedes, cuando te lo pida. Son acciones hacia afuera:
+  no las hagas por iniciativa propia.
