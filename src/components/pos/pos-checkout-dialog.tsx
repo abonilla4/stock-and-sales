@@ -42,6 +42,7 @@ import { PosReceiptDialog, type ReciboVentaData } from "./pos-receipt-dialog";
 
 import { formatUSD, formatBs } from "@/lib/formatters";
 import { MAX_DESCUENTO_PORCENTAJE_SIN_AUTORIZACION } from "@/lib/config/limites";
+import type { PermisoAutorizacion } from "@/lib/schemas/actions-schemas";
 
 interface PosCheckoutDialogProps {
   open: boolean;
@@ -93,6 +94,21 @@ export function PosCheckoutDialog({
   const porcentajeDescuento = subtotalUsd > 0 ? (descuentoUsd / subtotalUsd) * 100 : 0;
   const excedeDescuentoPermitido = porcentajeDescuento > MAX_DESCUENTO_PORCENTAJE_SIN_AUTORIZACION;
   const requiereAutorizacionAdmin = tieneStockInsuficiente || excedeDescuentoPermitido;
+
+  // El autorizador debe tener TODOS los permisos que la venta dispare. Son
+  // excepciones distintas y el catálogo las separa: quien puede perdonar un
+  // descuento no necesariamente puede vender bajo cero.
+  const permisosRequeridos: PermisoAutorizacion[] = [
+    ...(tieneStockInsuficiente ? (["ventas.autorizar_stock_negativo"] as const) : []),
+    ...(excedeDescuentoPermitido ? (["ventas.autorizar_descuento"] as const) : []),
+  ];
+
+  // Red de seguridad: si el servidor rechaza por stock que el cliente creía
+  // suficiente, el arreglo llegaría vacío y el diálogo no podría exigir nada.
+  const permisosParaDialogo: PermisoAutorizacion[] =
+    permisosRequeridos.length > 0
+      ? permisosRequeridos
+      : ["ventas.autorizar_stock_negativo"];
 
   // Cálculo de vuelto para efectivo Bs
   const montoRecibidoNum = parseFloat(montoRecibidoBs) || 0;
@@ -334,6 +350,7 @@ export function PosCheckoutDialog({
         <AdminAuthDialog
           open={adminAuthOpen}
           onOpenChange={setAdminAuthOpen}
+          permisosRequeridos={permisosParaDialogo}
           onAutorizado={(adminUserId) => {
             setAutorizadoPorAdmin(true);
             ejecutarConfirmacionVenta(true, adminUserId);

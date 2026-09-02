@@ -64,8 +64,8 @@ export function createAdminClient() {
  * `signInWithPassword` sobre este cliente valida la contraseña sin reescribir
  * las cookies del usuario que está operando la caja.
  *
- * Es lo que evita el bug actual de `autorizarVentaAdmin`, donde autenticar al
- * administrador reemplaza la sesión del cajero.
+ * Es lo que corrige el bug que tenía `autorizarVentaAdmin`, donde autenticar al
+ * administrador reemplazaba la sesión del cajero. Ver `lib/auth/autorizacion.ts`.
  */
 export function createEphemeralClient() {
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;

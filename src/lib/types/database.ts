@@ -215,12 +215,18 @@ export interface RolPermiso {
  */
 export interface RegistroAuditoria {
   id: string;
+  /** Quien EJERCE la autoridad en el evento, nunca el sujeto afectado. */
   usuario_id: string | null;
   email: string | null;
   accion: string;
   exito: boolean;
   detalle: string | null;
   created_at: string;
+  /**
+   * Solo en eventos de autorización delegada (migración 00033): quién pidió la
+   * excepción. NULL en todos los demás eventos.
+   */
+  solicitante_id: string | null;
 }
 
 /**

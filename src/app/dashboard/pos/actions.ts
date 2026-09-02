@@ -2,6 +2,13 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { autorizarAccion } from "@/lib/auth/autorizacion";
+import {
+  autorizarVentaAdminSchema,
+  confirmarVentaSchema,
+  getZodErrorMessage,
+} from "@/lib/schemas/actions-schemas";
+import type { PermisoAutorizacion } from "@/lib/schemas/actions-schemas";
 import type { Producto, Cliente, MetodoPago } from "@/lib/types/database";
 
 /**
@@ -74,8 +81,6 @@ export interface ConfirmarVentaParams {
   origen_autorizacion?: "admin_online" | "offline_diferido" | null;
   presupuesto_id?: string | null;
 }
-
-import { confirmarVentaSchema, getZodErrorMessage } from "@/lib/schemas/actions-schemas";
 
 /**
  * Confirmar una venta llamando a la RPC atómica `procesar_venta_transaccion`.
@@ -163,64 +168,51 @@ export async function confirmarVentaPOS(params: ConfirmarVentaParams) {
 }
 
 /**
- * Validar credenciales de un Administrador para autorizar venta con stock insuficiente/descuento.
- * Incluye Rate Limiting atómico con pg_advisory_xact_lock en la RPC verificar_y_registrar_intento_admin.
+ * Autorización delegada de una venta de excepción.
+ *
+ * Un administrador presta sus credenciales para autorizar una venta que el
+ * cajero no puede hacer solo. Recibe email además de contraseña porque el
+ * autorizador NO es el usuario en sesión.
+ *
+ * La versión anterior de esta acción tenía dos defectos que este refactor
+ * corrige:
+ *
+ *   1. Exigía que el usuario en sesión ya fuera admin, con lo que un cajero
+ *      nunca podía pedir autorización — el flujo entero era inalcanzable para
+ *      el único rol que lo necesitaba.
+ *   2. Autenticaba con el cliente de servidor, que escribe cookies: validar al
+ *      admin REEMPLAZABA la sesión del cajero.
+ *
+ * Ambos viven ahora en `autorizarAccion`, que valida contra un cliente efímero
+ * sin cookies. Aquí solo se valida la forma del payload y se traduce el
+ * resultado.
  */
-export async function autorizarVentaAdmin(password: string) {
-  const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user || !user.email) {
-    return { error: "Usuario actual no válido." };
-  }
-
-  // Validar si el usuario actual es admin
-  const { data: perfil } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", user.id)
-    .single();
-
-  if (perfil?.role !== "admin") {
-    return { error: "El usuario actual no tiene rol de Administrador para autorizar esta acción." };
-  }
-
-  // 1. Intentar autenticar la contraseña del administrador contra Supabase Auth
-  const { error: authError } = await supabase.auth.signInWithPassword({
-    email: user.email,
-    password: password,
+export async function autorizarVentaAdmin(
+  email: string,
+  password: string,
+  permisosRequeridos: PermisoAutorizacion[]
+) {
+  const parsed = autorizarVentaAdminSchema.safeParse({
+    email,
+    password,
+    permisos_requeridos: permisosRequeridos,
   });
 
-  const exitoAutenticacion = !authError;
+  if (!parsed.success) {
+    return { error: getZodErrorMessage(parsed.error) };
+  }
 
-  // 2. Invocar la RPC atómica con pg_advisory_xact_lock para verificar el límite y registrar auditoría
-  const { data: rpcRes, error: rpcErr } = await supabase.rpc("verificar_y_registrar_intento_admin", {
-    p_usuario_id: user.id,
-    p_email: user.email,
-    p_exito: exitoAutenticacion,
+  const resultado = await autorizarAccion({
+    permisosRequeridos: parsed.data.permisos_requeridos,
+    credenciales: {
+      email: parsed.data.email,
+      password: parsed.data.password,
+    },
   });
 
-  if (rpcErr) {
-    console.error("Error al registrar auditoría de intento admin:", rpcErr.message);
+  if (!resultado.ok) {
+    return { error: resultado.error, bloqueado: resultado.bloqueado };
   }
 
-  // 3. Si la RPC detectó que ya estaba bloqueado o alcanzó el límite
-  if (rpcRes?.bloqueado) {
-    return {
-      error: rpcRes.mensaje || "Demasiados intentos fallidos. Tu cuenta ha sido bloqueada temporalmente por 5 minutos.",
-      bloqueado: true,
-    };
-  }
-
-  if (!exitoAutenticacion) {
-    const restantes = rpcRes?.intentos_restantes ?? 0;
-    return {
-      error: `Contraseña de Administrador incorrecta. Intentos restantes: ${restantes}.`,
-    };
-  }
-
-  return { autorizada: true, adminUserId: user.id };
+  return { autorizada: true, adminUserId: resultado.autorizadoPor };
 }
