@@ -246,3 +246,22 @@ export const cambiarEstadoUsuarioSchema = z.object({
   usuario_id: z.string().uuid("ID de usuario inválido"),
   activo: z.boolean(),
 });
+
+// 11. Schema para autorización delegada (autorizarVentaAdmin)
+// El autorizador NO es el usuario en sesión: es un administrador que presta sus
+// credenciales para autorizar una excepción puntual. Por eso se valida el email
+// además de la contraseña.
+export const autorizarVentaAdminSchema = z.object({
+  email: z.string().trim().toLowerCase().email("Ingresa un correo electrónico válido"),
+  password: z.string().min(1, "La contraseña es obligatoria"),
+  permisos_requeridos: z
+    .array(z.enum(["ventas.autorizar_stock_negativo", "ventas.autorizar_descuento"]))
+    .min(1, "No se indicó qué permiso hay que autorizar"),
+});
+
+/**
+ * Permisos que el diálogo de autorización puede exigir. Se deriva del schema
+ * para que la lista no pueda divergir de lo que la validación acepta.
+ */
+export type PermisoAutorizacion =
+  z.infer<typeof autorizarVentaAdminSchema>["permisos_requeridos"][number];

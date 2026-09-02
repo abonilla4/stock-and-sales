@@ -29,6 +29,7 @@ import { confirmarVentaPOS } from "@/app/dashboard/pos/actions";
 import { AdminAuthDialog } from "@/components/pos/admin-auth-dialog";
 import { toast } from "sonner";
 import type { ReciboVentaData } from "@/components/pos/pos-receipt-dialog";
+import type { PermisoAutorizacion } from "@/lib/schemas/actions-schemas";
 
 interface ConvertirPresupuestoDialogProps {
   open: boolean;
@@ -60,6 +61,12 @@ export function ConvertirPresupuestoDialog({
   const [procesando, setProcesando] = useState(false);
   const [adminAuthOpen, setAdminAuthOpen] = useState(false);
   const [adminAuthMotivo, setAdminAuthMotivo] = useState("");
+  // Qué permisos exigirle al autorizador depende de por qué se abrió el
+  // diálogo, no de una lista fija: stock insuficiente y descuento excesivo son
+  // excepciones distintas con permisos distintos en el catálogo.
+  const [adminAuthPermisos, setAdminAuthPermisos] = useState<
+    PermisoAutorizacion[]
+  >(["ventas.autorizar_stock_negativo"]);
   const [permiteStockNegativo, setPermiteStockNegativo] = useState(false);
   const [clientTxId] = useState<string>(() => crypto.randomUUID());
 
@@ -112,6 +119,18 @@ export function ConvertirPresupuestoDialog({
 
       if (res.error) {
         if (res.esErrorStock || res.error.includes("autorización") || res.error.includes("descuento")) {
+          // El permiso se deduce del rechazo del servidor, que es quien sabe
+          // por qué falló. Se acumulan: un rechazo puede citar ambos motivos.
+          const permisos: PermisoAutorizacion[] = [];
+          if (res.esErrorStock || res.error.includes("stock")) {
+            permisos.push("ventas.autorizar_stock_negativo");
+          }
+          if (res.error.includes("descuento")) {
+            permisos.push("ventas.autorizar_descuento");
+          }
+          setAdminAuthPermisos(
+            permisos.length > 0 ? permisos : ["ventas.autorizar_stock_negativo"]
+          );
           setAdminAuthMotivo(res.error);
           setAdminAuthOpen(true);
         } else {
@@ -153,6 +172,7 @@ export function ConvertirPresupuestoDialog({
 
     if (hayStockInsuficiente) {
       setPermiteStockNegativo(true);
+      setAdminAuthPermisos(["ventas.autorizar_stock_negativo"]);
       setAdminAuthMotivo("Uno o más productos del presupuesto tienen stock actual insuficiente en inventario.");
       setAdminAuthOpen(true);
       return;
@@ -303,6 +323,7 @@ export function ConvertirPresupuestoDialog({
         onOpenChange={setAdminAuthOpen}
         onAutorizado={handleAdminAutorizado}
         motivo={adminAuthMotivo}
+        permisosRequeridos={adminAuthPermisos}
       />
     </>
   );

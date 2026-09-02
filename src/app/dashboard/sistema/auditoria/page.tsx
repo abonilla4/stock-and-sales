@@ -38,9 +38,10 @@ export default async function AuditoriaPage({
 
   let consulta = supabase
     .from("registro_auditoria")
-    .select("id, usuario_id, email, accion, exito, detalle, created_at", {
-      count: "exact",
-    })
+    .select(
+      "id, usuario_id, email, solicitante_id, accion, exito, detalle, created_at",
+      { count: "exact" }
+    )
     .order("created_at", { ascending: false })
     .range(primeraFila, primeraFila + AUDITORIA_FILAS_POR_PAGINA - 1);
 
